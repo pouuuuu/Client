@@ -25,7 +25,7 @@ import java.util.ArrayList;
 public class GameView extends Application implements GameObserver {
 
     private final String SERVER_IP = "127.0.0.1";
-    private final int SERVER_PORT = 12345;
+    private final int SERVER_PORT = 44444;
     private final String BUTTON_STYLE = "-fx-font-size: 12pt; -fx-background-color: #4CAF50; -fx-text-fill: white;";
 
     private BorderPane mainLayout;
