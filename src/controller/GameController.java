@@ -20,8 +20,6 @@ public class GameController {
     private ServerConnection serverConnection;
     private ArrayList<GameObserver> observers;
     private jsonBuilder jsonTool;
-
-    // LE THREAD EST MAINTENANT ICI
     private Thread gameLoopThread;
     private boolean isListening;
 
@@ -41,6 +39,8 @@ public class GameController {
         if (playerName == null || playerName.trim().isEmpty()) {
             onError("Pseudo vide."); return false;
         }
+
+        System.out.println("[DEBUG JSON] " + jsonTool.jsonAuth(playerName));
 
         // On crée la connexion
         this.serverConnection = new ServerConnection();
@@ -94,7 +94,6 @@ public class GameController {
 
         switch (cmd) {
             case "PLAYERS_UPDATE":
-                // Parsing complexe géré ICI
                 ArrayList<Player> players = parsePlayersList(json);
                 onPlayersUpdated(players);
                 break;
@@ -112,8 +111,6 @@ public class GameController {
             // Ajouter ici TRADE, FIGHT...
         }
     }
-
-    // --- ACTIONS UTILISATEUR ---
 
     public void createCard(String name, int attack, int defense, int health) {
         // Mode Debug affichage
