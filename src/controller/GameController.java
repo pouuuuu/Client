@@ -1,292 +1,279 @@
 package controller;
 
+import javafx.stage.Stage;
 import model.*;
 import network.ServerConnection;
-import java.util.ArrayList;
 import view.CardViewModel;
 import view.PlayerViewModel;
+import view.ViewManager;
+import jsonUtils.jsonBuilder;
 
-// Controleur MVC - Gere toute la logique metier
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
 public class GameController {
+
     private GameState gameState;
+    private ViewManager viewManager;
     private ServerConnection serverConnection;
     private ArrayList<GameObserver> observers;
+    private jsonBuilder jsonTool;
 
-    public GameController(String serverIp, int serverPort) {
+    // LE THREAD EST MAINTENANT ICI
+    private Thread gameLoopThread;
+    private boolean isListening;
+
+    public GameController(Stage stage) {
+        System.out.println("[CTRL] Démarrage.");
         this.gameState = new GameState();
         this.observers = new ArrayList<>();
-        this.serverConnection = new ServerConnection(serverIp, serverPort, this);
+        this.jsonTool = new jsonBuilder();
+
+        this.viewManager = new ViewManager(stage, this);
+        this.viewManager.showLoginView();
     }
 
-    public void addObserver(GameObserver observer) {
-        observers.add(observer);
-    }
-
-    public void removeObserver(GameObserver observer) {
-        observers.remove(observer);
-    }
-
-    private void notifyObservers() {
-        for (GameObserver observer : observers) {
-            observer.onGameStateChanged(gameState);
-        }
-    }
-
-    // ===== ACTIONS PUBLIQUES (appelees par la View) =====
+    // --- CONNEXION & BOUCLE D'ÉCOUTE ---
 
     public boolean connect(String playerName) {
-        if (!validatePlayerName(playerName)) {
-            onError("Nom de joueur invalide");
-            return false;
+        if (playerName == null || playerName.trim().isEmpty()) {
+            onError("Pseudo vide."); return false;
         }
-        return serverConnection.connect(playerName);
+
+        // On crée la connexion
+        this.serverConnection = new ServerConnection();
+        boolean success = this.serverConnection.connect(playerName);
+
+        if (success) {
+            // SI CONNECTÉ : Le contrôleur lance SA propre boucle d'écoute
+            startListening();
+        } else {
+            onError("Echec connexion serveur.");
+        }
+        return success;
+    }
+
+    private void startListening() {
+        isListening = true;
+        gameLoopThread = new Thread(() -> {
+            System.out.println("[CTRL] Démarrage du Thread d'écoute...");
+            try {
+                while (isListening && serverConnection.isConnected()) {
+                    // 1. ATTENTE (Bloquante)
+                    String message = serverConnection.waitResponse();
+
+                    if (message == null) break; // Fin du flux
+
+                    // 2. TRAITEMENT
+                    System.out.println("[RECU] " + message);
+                    processServerMessage(message);
+                }
+            } catch (IOException e) {
+                if (isListening) {
+                    System.err.println("[CTRL] Erreur flux : " + e.getMessage());
+                    onError("Connexion perdue.");
+                }
+            }
+        });
+        gameLoopThread.setDaemon(true);
+        gameLoopThread.start();
     }
 
     public void disconnect() {
-        serverConnection.disconnect();
+        isListening = false; // Arrête la boucle
+        if (serverConnection != null) serverConnection.disconnect();
+        viewManager.setConnected(false);
     }
 
-    // Valide et cree une carte
-    public boolean createCard(String name, int attack, int defense, int health) {
-        // Validation dans le controller (pas dans la view!)
-        if (!validateCardData(name, attack, defense, health)) {
-            return false;
+    // --- TRAITEMENT DES MESSAGES (Logique Métier) ---
+
+    private void processServerMessage(String json) {
+        String cmd = extractValue(json, "cmd");
+
+        switch (cmd) {
+            case "PLAYERS_UPDATE":
+                // Parsing complexe géré ICI
+                ArrayList<Player> players = parsePlayersList(json);
+                onPlayersUpdated(players);
+                break;
+
+            case "CARD_CREATED":
+                Card c = parseSingleCard(json);
+                onCardCreated(c);
+                break;
+
+            case "ERROR":
+                String err = extractValue(json, "error");
+                onError(err);
+                break;
+
+            // Ajouter ici TRADE, FIGHT...
         }
+    }
 
-        Player player = gameState.getCurrentPlayer();
-        if (player == null || !player.canCreateCard()) {
-            onError("Impossible de creer une carte (main pleine ou non connecte)");
-            return false;
+    // --- ACTIONS UTILISATEUR ---
+
+    public void createCard(String name, int attack, int defense, int health) {
+        // Mode Debug affichage
+        System.out.println("[DEBUG JSON] " + jsonTool.jsonCreateCard("Moi", name, health, attack, defense));
+
+        if (serverConnection == null || !serverConnection.isConnected()) {
+            System.err.println("[ERREUR] Pas de connexion.");
+            onError("Non connecté.");
+            return;
         }
-
-        return serverConnection.sendCreateCardRequest(name, attack, defense, health);
+        serverConnection.sendCreateCardRequest(name, attack, defense, health);
     }
 
-    public boolean exchangeCard(int myCardId, int targetPlayerId, int targetCardId) {
-        if (!validateExchange(myCardId, targetPlayerId, targetCardId)) {
-            return false;
-        }
-        return serverConnection.sendExchangeRequest(myCardId, targetPlayerId, targetCardId);
+    public void exchangeCard(int m, int tp, int tc) {
+        if(checkConn()) serverConnection.sendExchangeRequest(m, tp, tc);
+    }
+    public void combatCard(int m, int tp, int tc) {
+        if(checkConn()) serverConnection.sendCombatRequest(m, tp, tc);
+    }
+    private boolean checkConn() {
+        if (serverConnection != null && serverConnection.isConnected()) return true;
+        onError("Non connecté."); return false;
     }
 
-    public boolean acceptExchange(String requestId) {
-        return serverConnection.sendExchangeResponse(requestId, true);
-    }
-
-    public boolean rejectExchange(String requestId) {
-        return serverConnection.sendExchangeResponse(requestId, false);
-    }
-
-    public boolean combatCard(int myCardId, int targetPlayerId, int targetCardId) {
-        if (!validateCombat(myCardId, targetPlayerId, targetCardId)) {
-            return false;
-        }
-        return serverConnection.sendCombatRequest(myCardId, targetPlayerId, targetCardId);
-    }
-
-    public boolean acceptCombat(String requestId) {
-        return serverConnection.sendCombatResponse(requestId, true);
-    }
-
-    public boolean rejectCombat(String requestId) {
-        return serverConnection.sendCombatResponse(requestId, false);
-    }
-
-    // ===== GETTERS POUR LA VIEW =====
-
-    public GameState getGameState() {
-        return gameState;
-    }
-
-    public boolean isConnected() {
-        return serverConnection.isConnected();
-    }
-
-    // Retourne les infos du joueur actuel pour l'affichage
-    public PlayerViewModel getCurrentPlayerViewModel() {
-        Player player = gameState.getCurrentPlayer();
-        if (player == null) return null;
-
-        return new PlayerViewModel(
-                player.getId(),
-                player.getName(),
-                player.getCardCount(),
-                player.getHand().getMaxCards(),
-                convertCardsToViewModels(player.getHand().getCards())
-        );
-    }
-
-    // Retourne la liste des autres joueurs pour l'affichage
-    public ArrayList<PlayerViewModel> getOtherPlayersViewModels() {
-        ArrayList<PlayerViewModel> result = new ArrayList<>();
-        Player currentPlayer = gameState.getCurrentPlayer();
-
-        for (Player p : gameState.getConnectedPlayers()) {
-            if (currentPlayer == null || p.getId() != currentPlayer.getId()) {
-                result.add(new PlayerViewModel(
-                        p.getId(),
-                        p.getName(),
-                        p.getCardCount(),
-                        p.getHand().getMaxCards(),
-                        convertCardsToViewModels(p.getHand().getCards())
-                ));
-            }
-        }
-
-        return result;
-    }
-
-    // ===== VALIDATIONS (logique metier) =====
-
-    private boolean validatePlayerName(String name) {
-        return name != null && !name.trim().isEmpty() && name.length() <= 20;
-    }
-
-    private boolean validateCardData(String name, int attack, int defense, int health) {
-        if (name == null || name.trim().isEmpty()) {
-            onError("Le nom de la carte est vide");
-            return false;
-        }
-        if (attack < 1 || attack > 100) {
-            onError("L'attaque doit etre entre 1 et 100");
-            return false;
-        }
-        if (defense < 1 || defense > 100) {
-            onError("La defense doit etre entre 1 et 100");
-            return false;
-        }
-        if (health < 1 || health > 200) {
-            onError("Les HP doivent etre entre 1 et 200");
-            return false;
-        }
-        return true;
-    }
-
-    private boolean validateExchange(int myCardId, int targetPlayerId, int targetCardId) {
-        Player player = gameState.getCurrentPlayer();
-        if (player == null) {
-            onError("Non connecte");
-            return false;
-        }
-        if (player.getHand().getSpecificCardById(myCardId) == null) {
-            onError("Vous ne possedez pas cette carte");
-            return false;
-        }
-        if (gameState.getPlayerById(targetPlayerId) == null) {
-            onError("Joueur cible introuvable");
-            return false;
-        }
-        return true;
-    }
-
-    private boolean validateCombat(int myCardId, int targetPlayerId, int targetCardId) {
-        return validateExchange(myCardId, targetPlayerId, targetCardId);
-    }
-
-    // ===== CONVERSION MODEL -> VIEWMODEL =====
-
-    private ArrayList<CardViewModel> convertCardsToViewModels(ArrayList<Card> cards) {
-        ArrayList<CardViewModel> result = new ArrayList<>();
-        for (Card card : cards) {
-            result.add(new CardViewModel(
-                    card.getId(),
-                    card.getName(),
-                    card.getAttack(),
-                    card.getDefense(),
-                    card.getHealth()
-            ));
-        }
-        return result;
-    }
-
-    // ===== CALLBACKS RESEAU =====
-
-    public void onConnectionEstablished(int playerId, String playerName, ArrayList<Card> hand) {
-        Player player = new Player(playerId, playerName);
-        player.setConnected(true);
-
-        for (Card card : hand) {
-            player.getHand().addCard(card);
-        }
-
-        gameState.setCurrentPlayer(player);
+    // --- MODE DEBUG ---
+    public void startDebugMode(String name) {
+        Player p = new Player(0, name + " (Test)");
+        gameState.setCurrentPlayer(p);
+        viewManager.setConnected(true);
         notifyObservers();
     }
 
-    public void onCardCreated(Card card) {
-        Player player = gameState.getCurrentPlayer();
-        if (player != null) {
-            player.getHand().addCard(card);
-            notifyObservers();
-        }
-    }
+    // --- CALLBACKS INTERNES ---
 
-    public void onPlayersUpdated(ArrayList<Player> players) {
+    // Appelé quand le parsing PLAYERS_UPDATE est fini
+    private void onPlayersUpdated(ArrayList<Player> players) {
+        System.out.println("[CTRL] Mise à jour des joueurs reçue.");
         gameState.updateConnectedPlayers(players);
+
+        // Si on n'avait pas encore notre propre joueur, on le cherche
+        if (gameState.getCurrentPlayer() == null && serverConnection.isConnected()) {
+            // Logique simple: on prend le dernier ou on attend un ID spécifique
+            // Pour l'instant, on laisse la logique de connexion gérer l'init
+        }
+
+        // Rafraîchir l'interface
+        // Astuce : si on vient de se connecter, on active la vue ici aussi
+        if (!viewManager.getStage().getTitle().contains("Jeu en cours")) {
+            viewManager.setConnected(true);
+        }
+
         notifyObservers();
     }
 
-    public void onExchangeRequest(String requestId, int fromPlayerId, String fromPlayerName,
-                                  int offeredCardId, int requestedCardId) {
-        for (GameObserver observer : observers) {
-            observer.onExchangeRequestReceived(requestId, fromPlayerId, fromPlayerName,
-                    offeredCardId, requestedCardId);
-        }
-    }
-
-    public void onExchangeCompleted(Card newCard, int lostCardId) {
-        Player player = gameState.getCurrentPlayer();
-        if (player != null) {
-            Card lostCard = player.getHand().getSpecificCardById(lostCardId);
-            if (lostCard != null) {
-                player.getHand().removeCard(lostCard);
-            }
-            player.getHand().addCard(newCard);
+    private void onCardCreated(Card c) {
+        System.out.println("[CTRL] Carte créée.");
+        if (gameState.getCurrentPlayer() != null) {
+            gameState.getCurrentPlayer().getHand().addCard(c);
             notifyObservers();
         }
     }
 
-    public void onCombatRequest(String requestId, int fromPlayerId, String fromPlayerName,
-                                int attackingCardId, int targetCardId) {
-        for (GameObserver observer : observers) {
-            observer.onCombatRequestReceived(requestId, fromPlayerId, fromPlayerName,
-                    attackingCardId, targetCardId);
-        }
+    public void onError(String msg) {
+        System.err.println("[CTRL] Erreur: " + msg);
+        for(GameObserver o : observers) o.onError(msg);
     }
 
-    public void onCombatCompleted(CombatResult result) {
-        Player player = gameState.getCurrentPlayer();
+    // --- PARSING MANUEL (Déplacé ici) ---
 
-        if (player != null) {
-            Card winnerCard = player.getHand().getSpecificCardById(result.getWinnerCardId());
-            Card loserCard = player.getHand().getSpecificCardById(result.getLoserCardId());
+    private ArrayList<Player> parsePlayersList(String json) {
+        ArrayList<Player> list = new ArrayList<>();
+        // Découpage manuel du JSON
+        try {
+            int start = json.indexOf("[");
+            int end = json.lastIndexOf("]");
+            if (start == -1 || end == -1) return list;
 
-            if (loserCard != null && !loserCard.isUsable()) {
-                player.getHand().removeCard(loserCard);
+            String content = json.substring(start + 1, end);
+            ArrayList<String> pJsons = splitJsonObjects(content);
+
+            for (String pj : pJsons) {
+                int id = Integer.parseInt(extractValue(pj, "id"));
+                String name = extractValue(pj, "user");
+                Player p = new Player(id, name);
+
+                // Parsing des cartes imbriquées
+                int cS = pj.indexOf("[");
+                int cE = pj.lastIndexOf("]");
+                if (cS != -1 && cE != -1) {
+                    String cC = pj.substring(cS + 1, cE);
+                    for (String cj : splitJsonObjects(cC)) {
+                        if(!cj.trim().isEmpty()) {
+                            Card c = parseSingleCard(cj);
+                            if(c!=null) p.getHand().addCard(c);
+                        }
+                    }
+                }
+                list.add(p);
             }
-
-            notifyObservers();
+        } catch (Exception e) {
+            System.err.println("[PARSING] Erreur: " + e.getMessage());
         }
-
-        for (GameObserver observer : observers) {
-            observer.onCombatCompleted(result);
-        }
+        return list;
     }
 
-    public void onCardRemoved(int cardId) {
-        Player player = gameState.getCurrentPlayer();
-        if (player != null) {
-            Card card = player.getHand().getSpecificCardById(cardId);
-            if (card != null) {
-                player.getHand().removeCard(card);
-                notifyObservers();
+    private Card parseSingleCard(String json) {
+        try {
+            int id = Integer.parseInt(extractValue(json, "id"));
+            String name = extractValue(json, "name");
+            int hp = Integer.parseInt(extractValue(json, "HP"));
+            int ap = Integer.parseInt(extractValue(json, "AP"));
+            int dp = Integer.parseInt(extractValue(json, "DP"));
+            return new Card(id, name, ap, dp, hp);
+        } catch (Exception e) { return null; }
+    }
+
+    private String extractValue(String json, String key) {
+        Pattern p = Pattern.compile("\"" + key + "\"\\s*:\\s*\"?([^,\"}]+)\"?");
+        Matcher m = p.matcher(json);
+        return m.find() ? m.group(1) : "";
+    }
+
+    private ArrayList<String> splitJsonObjects(String t) {
+        ArrayList<String> l = new ArrayList<>();
+        int lvl = 0;
+        StringBuilder sb = new StringBuilder();
+        for (char c : t.toCharArray()) {
+            if (c == '{') lvl++;
+            if (c == '}') lvl--;
+            if (c == ',' && lvl == 0) {
+                l.add(sb.toString()); sb = new StringBuilder();
+            } else sb.append(c);
+        }
+        if (sb.length() > 0) l.add(sb.toString());
+        return l;
+    }
+
+    // --- VIEW MODELS & OBSERVERS (Inchangé) ---
+    public void addObserver(GameObserver o) { observers.add(o); }
+    private void notifyObservers() { for(GameObserver o : observers) o.onGameStateChanged(gameState); }
+
+    public PlayerViewModel getCurrentPlayerViewModel() {
+        Player p = gameState.getCurrentPlayer();
+        if(p==null) return null;
+        return new PlayerViewModel(p.getId(), p.getName(), p.getCardCount(), 10, convertCards(p.getHand().getCards()));
+    }
+    public ArrayList<PlayerViewModel> getOtherPlayersViewModels() {
+        ArrayList<PlayerViewModel> res = new ArrayList<>();
+        if (gameState.getCurrentPlayer() == null) return res;
+        for(Player p : gameState.getConnectedPlayers()) {
+            // On exclut le joueur courant de la liste des adversaires
+            if(p.getId() != gameState.getCurrentPlayer().getId()) {
+                res.add(new PlayerViewModel(p.getId(), p.getName(), p.getCardCount(), 10, convertCards(p.getHand().getCards())));
             }
         }
+        return res;
     }
-
-    public void onError(String errorMessage) {
-        for (GameObserver observer : observers) {
-            observer.onError(errorMessage);
-        }
+    private ArrayList<CardViewModel> convertCards(ArrayList<Card> cards) {
+        ArrayList<CardViewModel> r = new ArrayList<>();
+        for(Card c : cards) r.add(new CardViewModel(c.getId(), c.getName(), c.getAttack(), c.getDefense(), c.getHealth()));
+        return r;
     }
 }
