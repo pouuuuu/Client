@@ -6,7 +6,7 @@ import java.net.Socket;
 
 public class ServerConnection {
     // Configuration statique
-    private static final String SERVER_IP = "127.0.0.1";
+    private static final String SERVER_IP = "134.59.27.143";
     private static final int SERVER_PORT = 8080;
 
     private Socket socket;
@@ -64,7 +64,6 @@ public class ServerConnection {
 
     // --- 2. PRIMITIVES D'ECHANGE (Appelées par le Contrôleur) ---
 
-    // Méthode bloquante : attend la prochaine ligne du serveur
     public String waitResponse() throws IOException {
         if (!connected || input == null) throw new IOException("Non connecté");
         return input.readLine();

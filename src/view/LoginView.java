@@ -53,7 +53,6 @@ public class LoginView {
         errorLabel = new Label();
         errorLabel.setTextFill(Color.RED);
 
-        // Action Vraie Connexion
         btnConnect.setOnAction(e -> {
             errorLabel.setText("Connexion...");
             errorLabel.setTextFill(Color.BLUE);
@@ -61,6 +60,8 @@ public class LoginView {
             if (!sent) {
                 errorLabel.setText("Serveur inaccessible.");
                 errorLabel.setTextFill(Color.RED);
+            } else {
+                viewManager.setConnected(true);
             }
         });
 
