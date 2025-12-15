@@ -6,12 +6,14 @@ public class Player {
     private Hand hand;
     private boolean isConnected;
 
-
     public Player(int id, String name) {
         this.id = id;
         this.name = name;
         this.hand = new Hand();
         this.isConnected = false;
+
+        // --- LOG: Objet Joueur Créé ---
+        System.out.println("[MODEL] (+) Player Instance Created: [ID: " + id + ", Name: " + name + "]");
     }
 
     public int getId() {

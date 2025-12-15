@@ -16,6 +16,9 @@ public class Card {
         this.attack = attack;
         this.defense = defense;
         this.health = health;
+
+        // --- LOG: Objet Carte Créé ---
+        System.out.println("[MODEL] (+) Card Instance Created: " + this.toString());
     }
 
     public Card(int id, String name, int attack, int defense, int health, String ownerId) {
@@ -25,42 +28,27 @@ public class Card {
         this.defense = defense;
         this.health = health;
         this.ownerId = ownerId;
+
+        // --- LOG: Objet Carte Créé (avec Proprio) ---
+        System.out.println("[MODEL] (+) Card Instance Created (Owner: " + ownerId + "): " + this.toString());
     }
 
     // Getters and setters
-    public int getId() {
-        return id;
-    }
-    public String getName() {
-        return name;
-    }
-    public int getAttack() {
-        return attack;
-    }
-    public int getDefense() {
-        return defense;
-    }
-    public int getHealth() {
-        return health;
-    }
-    public String getOwnerId() {
-        return ownerId;
-    }
+    public int getId() { return id; }
+    public String getName() { return name; }
+    public int getAttack() { return attack; }
+    public int getDefense() { return defense; }
+    public int getHealth() { return health; }
+    public String getOwnerId() { return ownerId; }
 
-    public void setOwnerId(String ownerId) {
-        this.ownerId = ownerId;
-    }
-    public void setHealth(int health) {
-        this.health = health;
-    }
+    public void setOwnerId(String ownerId) { this.ownerId = ownerId; }
+    public void setHealth(int health) { this.health = health; }
 
-    public boolean isUsable() {
-        return health > 0;
-    }
+    public boolean isUsable() { return health > 0; }
 
     @Override
     public String toString() {
-        return String.format("Card[id=%s, name=%s, atk=%d, def=%d, hp=%d]",
+        return String.format("Card[id=%d, name='%s', atk=%d, def=%d, hp=%d]",
                 id, name, attack, defense, health);
     }
 }

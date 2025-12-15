@@ -7,15 +7,14 @@ import javafx.scene.Node;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.control.TextField;
-import javafx.scene.layout.GridPane;
-import javafx.scene.layout.VBox;
+import javafx.scene.layout.*;
 import javafx.scene.paint.Color;
 
 public class LoginView {
 
     private ViewManager viewManager;
     private GameController controller;
-    private VBox layout;
+    private BorderPane mainContainer;
     private Label errorLabel;
 
     public LoginView(ViewManager viewManager, GameController controller) {
@@ -25,30 +24,39 @@ public class LoginView {
     }
 
     private void createLayout() {
-        layout = new VBox(20);
-        layout.setAlignment(Pos.TOP_CENTER);
-        layout.setPadding(new Insets(50));
+        mainContainer = new BorderPane();
+        mainContainer.setPadding(new Insets(50));
 
-        Label title = new Label("Connexion au Serveur");
-        title.setStyle("-fx-font-size: 24pt; -fx-font-weight: bold;");
+        VBox box = new VBox(20);
+        box.setAlignment(Pos.CENTER);
+        box.setPadding(new Insets(30, 40, 30, 40));
 
-        GridPane form = new GridPane();
-        form.setHgap(10);
-        form.setVgap(10);
-        form.setAlignment(Pos.CENTER);
+        box.setStyle(
+                "-fx-background-color: rgba(255, 255, 255, 0.7);" +
+                        "-fx-background-radius: 15;" +
+                        "-fx-border-radius: 15;" +
+                        "-fx-border-color: #B0BEC5;" +
+                        "-fx-effect: dropshadow(gaussian, rgba(0,0,0,0.15), 10, 0, 0, 5);"
+        );
+        box.setMaxSize(Region.USE_PREF_SIZE, Region.USE_PREF_SIZE);
+
+        Label title = new Label("Connexion au serveur");
+        title.setStyle("-fx-font-size: 20pt; -fx-font-weight: bold; -fx-text-fill: #37474F;");
 
         TextField nameField = new TextField();
-        form.addRow(0, new Label("Pseudo :"), nameField);
+        nameField.setPromptText("Entrer votre pseudo");
+        nameField.setPrefWidth(250);
+        nameField.setStyle("-fx-font-size: 12pt;");
 
-        // BOUTON 1 : Vraie Connexion
-        Button btnConnect = new Button("SE CONNECTER (Live)");
-        btnConnect.setStyle("-fx-font-size: 14pt; -fx-background-color: #00897B; -fx-text-fill: white;");
+        Button btnConnect = new Button("Se connecter");
+        btnConnect.setStyle(
+                "-fx-font-size: 14pt;" +
+                        "-fx-background-color: #00897B;" +
+                        "-fx-text-fill: white;" +
+                        "-fx-background-radius: 8;" +
+                        "-fx-cursor: hand;"
+        );
         btnConnect.setPrefWidth(250);
-
-        // BOUTON 2 : Mode Test
-        Button btnDebug = new Button("MODE TEST (Interface seule)");
-        btnDebug.setStyle("-fx-font-size: 11pt; -fx-background-color: #757575; -fx-text-fill: white;");
-        btnDebug.setPrefWidth(250);
 
         errorLabel = new Label();
         errorLabel.setTextFill(Color.RED);
@@ -56,24 +64,23 @@ public class LoginView {
         btnConnect.setOnAction(e -> {
             errorLabel.setText("Connexion...");
             errorLabel.setTextFill(Color.BLUE);
-            boolean sent = controller.connect(nameField.getText());
-            if (!sent) {
-                errorLabel.setText("Serveur inaccessible.");
+            boolean success = controller.connect(nameField.getText());
+            if (!success) {
+                errorLabel.setText("Connecxion échouée (Serveur indisponible ?)");
                 errorLabel.setTextFill(Color.RED);
-            } else {
-                viewManager.setConnected(true);
             }
         });
 
-        // Action Mode Test
-        btnDebug.setOnAction(e -> {
-            controller.startDebugMode(nameField.getText());
-        });
+        Button btnDebug = new Button("Mode hors-ligne");
+        btnDebug.setStyle("-fx-background-color: transparent; -fx-text-fill: gray; -fx-underline: true;");
+        btnDebug.setOnAction(e -> controller.startDebugMode(nameField.getText().isEmpty() ? "Tester" : nameField.getText()));
 
-        layout.getChildren().addAll(title, form, btnConnect, btnDebug, errorLabel);
+        box.getChildren().addAll(title, nameField, btnConnect, errorLabel, btnDebug);
+
+        mainContainer.setCenter(box);
     }
 
     public Node getView() {
-        return layout;
+        return mainContainer;
     }
 }

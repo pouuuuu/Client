@@ -24,57 +24,61 @@ public class ServerConnection {
         this.jsonBuilder = new jsonBuilder();
     }
 
-    // --- CONNEXION ASYNCHRONE ---
+    // --- CONNECTION ---
     public boolean connect(String playerName) {
         this.currentPlayerName = playerName;
-        System.out.println("[RESEAU] Tentative de connexion...");
+        System.out.println("[NETWORK] Attempting to connect to " + SERVER_IP + ":" + SERVER_PORT + "...");
 
         try {
-            // 1. Ouverture du socket
+            // 1. Open socket
             socket = new Socket(SERVER_IP, SERVER_PORT);
             input = new BufferedReader(new InputStreamReader(socket.getInputStream()));
             output = new PrintWriter(socket.getOutputStream(), true);
             connected = true;
 
-            // 2. Démarrage IMMÉDIAT de l'écoute (avant même d'envoyer l'auth)
+            System.out.println("[NETWORK] Connection established!");
+
+            // 2. Start listening thread immediately
             startListenerThread();
 
-            // 3. Envoi de la demande d'authentification (sans attendre la réponse)
+            // 3. Send Authentication Request
             sendJson(jsonBuilder.jsonAuth(playerName));
 
-            return true; // Le socket est ouvert, c'est tout ce qu'on peut dire pour l'instant
+            return true;
         } catch (IOException e) {
-            System.err.println("[RESEAU] Erreur socket : " + e.getMessage());
+            System.err.println("[NETWORK] Socket error: " + e.getMessage());
             return false;
         }
     }
 
-    // --- ECOUTE PERMANENTE ---
+    // --- LISTENER (RECEIVE) ---
     private void startListenerThread() {
         Thread listener = new Thread(() -> {
             try {
                 String message;
-                // Boucle de lecture : tant qu'on reçoit des lignes
+                // Read loop
                 while (connected && (message = input.readLine()) != null) {
-                    System.out.println("[RECU] " + message);
 
-                    // PASSAGE DE RELAIS : On envoie le JSON brut au contrôleur
+                    // --- LOG: PACKET RECEIVED ---
+                    System.out.println("[PACKET IN]  " + message);
+
+                    // Send raw JSON to controller
                     controller.processServerMessage(message);
                 }
             } catch (IOException e) {
                 if (connected) {
-                    System.err.println("[RESEAU] Connexion coupée.");
-                    controller.onError("Connexion perdue avec le serveur.");
+                    System.err.println("[NETWORK] Connection lost.");
+                    controller.onError("Connection lost with server.");
                 }
             } finally {
                 disconnect();
             }
         });
-        listener.setDaemon(true); // Le thread s'arrête si l'application ferme
+        listener.setDaemon(true); // Stop thread if app closes
         listener.start();
     }
 
-    // --- ENVOIS ---
+    // --- SENDER (SEND) ---
 
     public void sendCreateCardRequest(String n, int a, int d, int h) {
         sendJson(jsonBuilder.jsonCreateCard(currentPlayerName, n, h, a, d));
@@ -90,8 +94,10 @@ public class ServerConnection {
 
     private void sendJson(String json) {
         if (output != null) {
+            // --- LOG: PACKET SENT ---
+            System.out.println("[PACKET OUT] " + json);
+
             output.println(json);
-            System.out.println("[ENVOI] " + json);
         }
     }
 
