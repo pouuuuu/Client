@@ -7,7 +7,7 @@ import java.net.Socket;
 
 public class ServerConnection {
     // Adapter l'IP selon votre configuration
-    private static final String SERVER_IP = "127.0.0.1";
+    private static final String SERVER_IP = "134.59.27.143";
     private static final int SERVER_PORT = 8080;
 
     private Socket socket;

@@ -9,6 +9,7 @@ import view.PlayerViewModel;
 import view.ViewManager;
 
 import java.util.ArrayList;
+import javafx.application.Platform;
 
 public class GameController {
 
@@ -82,14 +83,16 @@ public class GameController {
     // --- 3. ACTION HANDLERS ---
 
     private void handleAuthSuccess(int playerId) {
-        System.out.println("[CTRL] Auth success. My ID: " + playerId);
+        Platform.runLater(() -> {
+            System.out.println("[CTRL] Auth success. My ID: " + playerId);
 
-        Player me = new Player(playerId, pendingPlayerName);
-        me.setConnected(true);
-        gameState.setCurrentPlayer(me);
+            Player me = new Player(playerId, pendingPlayerName);
+            me.setConnected(true);
+            gameState.setCurrentPlayer(me);
 
-        viewManager.setConnected(true);
-        notifyObservers();
+            viewManager.setConnected(true);
+            notifyObservers();
+        });
     }
 
     private void onCardCreated(Card card) {

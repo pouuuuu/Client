@@ -4,7 +4,7 @@ import java.util.ArrayList;
 
 public class Hand {
     private ArrayList<Card> cards;
-    private static final int MAX_CARDS = 10;
+    private static final int MAX_CARDS = 8;
 
     public Hand() {
         this.cards = new ArrayList<Card>();

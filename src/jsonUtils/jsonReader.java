@@ -18,7 +18,7 @@ public class jsonReader {
     // Extrait l'ID pour l'authentification
     public int getAuthId(String json) {
         try {
-            return Integer.parseInt(extractValue(json, "id"));
+            return Integer.parseInt(extractValue(json, "user_id"));
         } catch (NumberFormatException e) {
             return 0;
         }
