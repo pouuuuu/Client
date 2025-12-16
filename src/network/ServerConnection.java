@@ -16,12 +16,17 @@ public class ServerConnection {
     private boolean connected;
     private jsonBuilder jsonBuilder;
     private String currentPlayerName;
+    private int currentPlayerId;
     private GameController controller;
 
     public ServerConnection(GameController controller) {
         this.controller = controller;
         this.connected = false;
         this.jsonBuilder = new jsonBuilder();
+    }
+
+    public void setPlayerId(int id) {
+        this.currentPlayerId = id;
     }
 
     // --- CONNECTION ---
@@ -81,15 +86,15 @@ public class ServerConnection {
     // --- SENDER (SEND) ---
 
     public void sendCreateCardRequest(String n, int a, int d, int h) {
-        sendJson(jsonBuilder.jsonCreateCard(currentPlayerName, n, h, a, d));
+        sendJson(jsonBuilder.jsonCreateCard(currentPlayerId, n, h, a, d));
     }
 
     public void sendExchangeRequest(int m, int tp, int tc) {
-        sendJson(jsonBuilder.jsonTradeRequest(currentPlayerName, m, String.valueOf(tp), tc));
+        sendJson(jsonBuilder.jsonTradeRequest(currentPlayerId, m, String.valueOf(tp), tc));
     }
 
     public void sendCombatRequest(int m, int tp, int tc) {
-        sendJson(jsonBuilder.jsonFightRequest(currentPlayerName, m, String.valueOf(tp), tc));
+        sendJson(jsonBuilder.jsonFightRequest(currentPlayerId, m, String.valueOf(tp), tc));
     }
 
     private void sendJson(String json) {

@@ -9,41 +9,37 @@ public class jsonBuilder {
     }
 
     // Creation d'une carte
-    public String jsonCreateCard(String playerName, String cardName, int hp, int ap, int dp) {
-        return "{\"cmd\":\"CREATE_CARD\",\"user\":\"" + playerName + "\",\"data\":{\"cardName\":\"" + cardName + "\",\"HP\":" + hp + ",\"AP\":" + ap + ",\"DP\":" + dp + "}}";
+    public String jsonCreateCard(int playerId, String cardName, int hp, int ap, int dp) {
+        return "{\"cmd\":\"CREATE_CARD\",\"id\":" + playerId + ",\"data\":{\"cardName\":\"" + cardName + "\",\"HP\":" + hp + ",\"AP\":" + ap + ",\"DP\":" + dp + "}}";
     }
 
-    // Demande d'echange de carte
-    public String jsonTradeRequest(String playerName, int cardId, String traderId, int traderCardId) {
-        return "{\"cmd\":\"TRADE_REQUEST\",\"user\":\"" + playerName + "\",\"data\":{\"cardId\":" + cardId + ",\"traderId\":\"" + traderId + "\",\"traderCardId\":" + traderCardId + "}}";
-    }
-
-    // Acceptation d'un echange
-    public String jsonTradeAccept(String playerName) {
-        return "{\"cmd\":\"TRADE_ACCEPT\",\"user\":\"" + playerName + "\"}";
-    }
-
-    // Refus d'un echange
-    public String jsonTradeDeny(String playerName) {
-        return "{\"cmd\":\"TRADE_DENY\",\"user\":\"" + playerName + "\"}";
+    // Demande d'echange
+    public String jsonTradeRequest(int playerId, int cardId, String traderId, int traderCardId) {
+        return "{\"cmd\":\"TRADE_REQUEST\",\"id\":" + playerId + ",\"data\":{\"cardId\":" + cardId + ",\"traderId\":\"" + traderId + "\",\"traderCardId\":" + traderCardId + "}}";
     }
 
     // Demande de combat
-    public String jsonFightRequest(String playerName, int cardId, String opponentId, int opponentCardId) {
-        return "{\"cmd\":\"FIGHT_REQUEST\",\"user\":\"" + playerName + "\",\"data\":{\"cardId\":" + cardId + ",\"opponentId\":\"" + opponentId + "\",\"opponentCardId\":" + opponentCardId + "}}";
+    public String jsonFightRequest(int playerId, int cardId, String opponentId, int opponentCardId) {
+        return "{\"cmd\":\"FIGHT_REQUEST\",\"id\":" + playerId + ",\"data\":{\"cardId\":" + cardId + ",\"opponentId\":\"" + opponentId + "\",\"opponentCardId\":" + opponentCardId + "}}";
     }
 
-    // Acceptation d'un combat
-    public String jsonFightAccept(String playerName) {
-        return "{\"cmd\":\"FIGHT_ACCEPT\",\"user\":\"" + playerName + "\"}";
+    // Pour les Accept/Deny, on passe aussi l'ID
+    public String jsonTradeAccept(int playerId) {
+        return "{\"cmd\":\"TRADE_ACCEPT\",\"id\":" + playerId + "}";
     }
 
-    // Refus d'un combat
-    public String jsonFightDeny(String playerName) {
-        return "{\"cmd\":\"FIGHT_DENY\",\"user\":\"" + playerName + "\"}";
+    public String jsonTradeDeny(int playerId) {
+        return "{\"cmd\":\"TRADE_DENY\",\"id\":" + playerId + "}";
     }
 
-    // Message d'erreur generique
+    public String jsonFightAccept(int playerId) {
+        return "{\"cmd\":\"FIGHT_ACCEPT\",\"id\":" + playerId + "}";
+    }
+
+    public String jsonFightDeny(int playerId) {
+        return "{\"cmd\":\"FIGHT_DENY\",\"id\":" + playerId + "}";
+    }
+
     public String jsonError() {
         return "{\"cmd\":\"ERROR\",\"data\":{\"error\":\"error\"}}";
     }

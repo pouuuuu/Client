@@ -83,8 +83,12 @@ public class GameController {
     // --- 3. ACTION HANDLERS ---
 
     private void handleAuthSuccess(int playerId) {
-        Platform.runLater(() -> {
+        javafx.application.Platform.runLater(() -> {
             System.out.println("[CTRL] Auth success. My ID: " + playerId);
+
+            if (serverConnection != null) {
+                serverConnection.setPlayerId(playerId);
+            }
 
             Player me = new Player(playerId, pendingPlayerName);
             me.setConnected(true);
