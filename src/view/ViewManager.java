@@ -2,7 +2,6 @@ package view;
 
 import controller.GameController;
 import javafx.geometry.Insets;
-import javafx.geometry.Pos;
 import javafx.scene.Scene;
 import javafx.scene.control.Button;
 import javafx.scene.layout.BorderPane;
@@ -23,6 +22,8 @@ public class ViewManager {
     private LoginView loginView;
     private GameBoardView gameBoardView;
     private LogView logView;
+    private CombatView combatView;
+    private TradeView tradeView;
 
     // Style de bouton adapté de MenuNavigation
     private final String MENU_BTN_STYLE =
@@ -52,15 +53,19 @@ public class ViewManager {
         this.loginView = new LoginView(this, controller);
         this.gameBoardView = new GameBoardView(this, controller);
         this.logView = new LogView(this, controller);
+        this.combatView = new CombatView(this, controller);
+        this.tradeView = new TradeView(this, controller);
 
         controller.addObserver(gameBoardView);
         controller.addObserver(logView);
+        controller.addObserver(tradeView);
+        controller.addObserver(combatView);
 
         showLoginView();
         setConnected(false);
 
         Scene scene = new Scene(mainLayout, 1280, 800);
-        stage.setTitle("JavaFX Game Client");
+        stage.setTitle("Jeu de cartes");
         stage.setScene(scene);
         stage.show();
     }
@@ -72,12 +77,23 @@ public class ViewManager {
         else showLoginView();
     }
 
-    public void showLoginView() { mainLayout.setCenter(loginView.getView()); }
+    public void showLoginView() {
+        mainLayout.setCenter(loginView.getView());
+    }
     public void showGameView() {
         gameBoardView.refresh();
         mainLayout.setCenter(gameBoardView.getView());
     }
-    public void showLogView() { mainLayout.setCenter(logView.getView()); }
+    public void showLogView() {
+        mainLayout.setCenter(logView.getView());
+    }
+    public void showCombatView() {
+        mainLayout.setCenter(combatView.getView());
+    }
+
+    public void showTradeView() {
+        mainLayout.setCenter(tradeView.getView());
+    }
     public Stage getStage() { return stage; }
 
     private VBox createNavigationMenu() {

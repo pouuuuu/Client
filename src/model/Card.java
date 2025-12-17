@@ -48,7 +48,7 @@ public class Card {
 
     @Override
     public String toString() {
-        return String.format("Card[id=%d, name='%s', atk=%d, def=%d, hp=%d]",
+        return String.format("Card[id=%d, name='%s', AP=%d, DF=%d, HP=%d]",
                 id, name, attack, defense, health);
     }
 }

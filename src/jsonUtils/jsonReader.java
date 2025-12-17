@@ -92,12 +92,11 @@ public class jsonReader {
 
     private Card parseSingleCard(String json) {
         try {
-            String idStr = extractValue(json, "id");
+            String idStr = extractValue(json, "id_player");
             if (idStr.isEmpty()) return null;
 
             int id = Integer.parseInt(idStr);
-            String name = extractValue(json, "name");
-            if (name.isEmpty()) name = extractValue(json, "cardName"); // Support fallback
+            String name = extractValue(json, "cardName");
 
             int hp = parseIntSafe(extractValue(json, "HP"));
             int ap = parseIntSafe(extractValue(json, "AP"));

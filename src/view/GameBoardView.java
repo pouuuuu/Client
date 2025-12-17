@@ -62,7 +62,10 @@ public class GameBoardView implements GameObserver {
 
         // Boutons d'action génériques (logique à connecter selon besoin)
         Button btnTrade = createActionButton("Echanger", "#00897B");
+        btnTrade.setOnAction(e -> viewManager.showTradeView());
+
         Button btnFight = createActionButton("Combattre", "#DC143C");
+        btnFight.setOnAction(e -> viewManager.showCombatView());
 
         actionsBox.getChildren().addAll(btnCreate, btnTrade, btnFight);
 

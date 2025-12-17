@@ -49,7 +49,6 @@ public class GameController {
     // --- 2. PROCESS MESSAGES (Delegation to JSON_Reader) ---
 
     public void processServerMessage(String json) {
-        // Use JSON_Reader to get the command
         String cmd = jsonReader.getCommand(json);
 
         switch (cmd) {
@@ -58,7 +57,7 @@ public class GameController {
                 handleAuthSuccess(id);
                 break;
 
-            case "CARD_CREATED":
+            case "CREATE_CARD_OK":
                 Card c = jsonReader.parseCardCreated(json);
                 if (c != null) {
                     onCardCreated(c);
@@ -69,6 +68,9 @@ public class GameController {
                 ArrayList<Player> players = jsonReader.parsePlayersList(json);
                 onPlayersUpdated(players);
                 break;
+
+            case "FIGHT_REQUESTED":
+
 
             case "ERROR":
                 String err = jsonReader.getErrorMessage(json);
