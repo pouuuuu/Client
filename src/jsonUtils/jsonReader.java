@@ -92,17 +92,16 @@ public class jsonReader {
 
     private Card parseSingleCard(String json) {
         try {
-            String idStr = extractValue(json, "id_player");
-            if (idStr.isEmpty()) return null;
-
-            int id = Integer.parseInt(idStr);
+            int cardId = parseIntSafe(extractValue(json, "card_id"));
             String name = extractValue(json, "cardName");
-
             int hp = parseIntSafe(extractValue(json, "HP"));
             int ap = parseIntSafe(extractValue(json, "AP"));
             int dp = parseIntSafe(extractValue(json, "DP"));
+            int ownerId = parseIntSafe(extractValue(json, "id_player"));
 
-            return new Card(id, name, ap, dp, hp);
+            //Retourner la carte avec les bonnes infos
+                return new Card(cardId, name, ap, dp, hp, ownerId);
+
         } catch (Exception e) {
             System.err.println("[JSON_Reader] Error parsing card: " + e.getMessage());
             return null;

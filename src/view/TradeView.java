@@ -82,7 +82,7 @@ public class TradeView implements GameObserver {
             if (me != null && me.getCards() != null) {
                 for (CardViewModel c : me.getCards()) {
                     // Utilisation de la nouvelle CardView !
-                    CardView cv = new CardView(c, 0.8); // 0.8 scale pour que ce soit plus petit
+                    CardView cv = new CardView(c, 0.8);
                     grid.getChildren().add(cv);
                 }
             }

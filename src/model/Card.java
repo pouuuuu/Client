@@ -8,28 +8,18 @@ public class Card {
     private int attack;
     private int defense;
     private int health;
-    private String ownerId;
+    private int maxHealth;
+    private int ownerId;
 
-    public Card(int id, String name, int attack, int defense, int health) {
+    public Card(int id, String name, int attack, int defense, int health, int ownerId) {
         this.id = id;
         this.name = name;
         this.attack = attack;
         this.defense = defense;
         this.health = health;
-
-        // --- LOG: Objet Carte Créé ---
-        System.out.println("[MODEL] (+) Card Instance Created: " + this.toString());
-    }
-
-    public Card(int id, String name, int attack, int defense, int health, String ownerId) {
-        this.id = id;
-        this.name = name;
-        this.attack = attack;
-        this.defense = defense;
-        this.health = health;
+        this.maxHealth = health;
         this.ownerId = ownerId;
 
-        // --- LOG: Objet Carte Créé (avec Proprio) ---
         System.out.println("[MODEL] (+) Card Instance Created (Owner: " + ownerId + "): " + this.toString());
     }
 
@@ -39,9 +29,14 @@ public class Card {
     public int getAttack() { return attack; }
     public int getDefense() { return defense; }
     public int getHealth() { return health; }
-    public String getOwnerId() { return ownerId; }
 
-    public void setOwnerId(String ownerId) { this.ownerId = ownerId; }
+    public int getMaxHealth() {
+        return maxHealth;
+    }
+
+    public int getOwnerId() { return ownerId; }
+
+    public void setOwnerId(int ownerId) { this.ownerId = ownerId; }
     public void setHealth(int health) { this.health = health; }
 
     public boolean isUsable() { return health > 0; }

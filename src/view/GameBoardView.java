@@ -8,11 +8,8 @@ import javafx.geometry.Pos;
 import javafx.scene.Cursor;
 import javafx.scene.Node;
 import javafx.scene.Scene;
-import javafx.scene.control.Button;
-import javafx.scene.control.Label;
-import javafx.scene.control.TextField;
+import javafx.scene.control.*;
 import javafx.scene.layout.*;
-import javafx.scene.shape.Rectangle;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
 import model.CombatResult;
@@ -22,240 +19,440 @@ public class GameBoardView implements GameObserver {
 
     private ViewManager viewManager;
     private GameController controller;
-    private VBox layout;
+    private BorderPane mainLayout;
 
-    private HBox handDisplay;
-    private HBox opponentCardsDisplay; // Pour afficher les cartes adverses (simulé ou réel)
-    private VBox playersListDisplay; // Remplacement du TextArea par une liste de boutons
+    // Zones d'affichage
+    private GridPane myHandContainer;
+    private GridPane opponentHandContainer;
+    private VBox centerContainer;
+
+    // État de la sélection locale (pour l'UI uniquement)
+    private CardViewModel selectedMyCard = null;
+    private CardViewModel selectedOpponentCard = null;
+    private PlayerViewModel selectedOpponent = null;
+
+    // Labels d'info
+    private Label lblMySelection;
+    private Label lblOppSelection;
+    private Label lblOppCardSelection;
+
+    // Boutons d'action
+    private Button btnCombat;
+    private Button btnTrade;
 
     public GameBoardView(ViewManager viewManager, GameController controller) {
         this.viewManager = viewManager;
         this.controller = controller;
-        createLayout();
     }
 
-    private void createLayout() {
-        layout = new VBox(20);
-        layout.setAlignment(Pos.TOP_CENTER);
-        layout.setPadding(new Insets(20));
+    public Node getView() {
+        mainLayout = new BorderPane();
+        mainLayout.setPadding(new Insets(10));
+        // Fond global
+        mainLayout.setStyle("-fx-background-color: linear-gradient(to bottom right, #E0F7FA, #80DEEA);");
 
-        // Titre
-        Label title = new Label("Jeu de cartes");
-        title.setStyle("-fx-font-size: 24pt; -fx-font-weight: bold; -fx-effect: dropshadow(gaussian, white, 2, 1.0, 0, 0);");
+        // --- EN-TÊTE ---
+        Label title = new Label("PLATEAU DE JEU");
+        title.setStyle("-fx-font-size: 28pt; -fx-font-weight: bold; -fx-text-fill: #006064; -fx-effect: dropshadow(gaussian, rgba(255,255,255,0.5), 0, 0, 0, 1);");
+        BorderPane.setAlignment(title, Pos.CENTER);
+        mainLayout.setTop(title);
 
-        // --- MA MAIN ---
-        Label myHandTitle = new Label("Votre main");
-        myHandTitle.setStyle("-fx-font-size: 16pt; -fx-font-weight: bold;");
+        // --- CORPS (3 Colonnes) ---
+        HBox body = new HBox(20);
+        body.setAlignment(Pos.CENTER);
+        body.setPadding(new Insets(20));
+        HBox.setHgrow(body, Priority.ALWAYS);
 
-        handDisplay = new HBox(15);
-        styleCardContainer(handDisplay);
+        // 1. GAUCHE : Ma Main
+        VBox leftSection = createMyHandSection();
+        HBox.setHgrow(leftSection, Priority.ALWAYS);
+        leftSection.setPrefWidth(450);
 
-        // --- ACTIONS ---
-        Label actionsTitle = new Label("Actions disponibles");
-        actionsTitle.setStyle("-fx-font-size: 16pt; -fx-font-weight: bold;");
+        // 2. CENTRE : Joueurs & Actions
+        VBox centerSection = createCenterSection();
+        centerSection.setPrefWidth(350);
+        centerSection.setMinWidth(300);
 
-        HBox actionsBox = new HBox(20);
-        actionsBox.setAlignment(Pos.CENTER);
+        // 3. DROITE : Main Adversaire
+        VBox rightSection = createOpponentHandSection();
+        HBox.setHgrow(rightSection, Priority.ALWAYS);
+        rightSection.setPrefWidth(450);
 
-        Button btnCreate = createActionButton("Créer une carte", "#4682B4");
+        body.getChildren().addAll(leftSection, centerSection, rightSection);
+        mainLayout.setCenter(body);
+
+        // Initialisation de l'affichage
+        refresh();
+
+        return mainLayout;
+    }
+
+    // =========================================================================
+    // SECTION 1 : MA MAIN (GAUCHE)
+    // =========================================================================
+
+    private VBox createMyHandSection() {
+        VBox section = new VBox(15);
+        section.setAlignment(Pos.TOP_CENTER);
+        section.setPadding(new Insets(15));
+        section.setStyle("-fx-background-color: rgba(255,255,255,0.6); -fx-background-radius: 15; -fx-border-color: #4CAF50; -fx-border-width: 3; -fx-border-radius: 12;");
+
+        Label title = new Label("VOTRE MAIN");
+        title.setStyle("-fx-font-size: 18pt; -fx-font-weight: bold; -fx-text-fill: #2E7D32;");
+
+        Button btnCreate = new Button("＋ Créer Carte");
+        btnCreate.setStyle("-fx-background-color: #4CAF50; -fx-text-fill: white; -fx-font-weight: bold; -fx-cursor: hand;");
         btnCreate.setOnAction(e -> openCreateCardDialog());
 
-        // Boutons d'action génériques (logique à connecter selon besoin)
-        Button btnTrade = createActionButton("Echanger", "#00897B");
-        btnTrade.setOnAction(e -> viewManager.showTradeView());
+        // Grille pour les cartes (3 colonnes)
+        myHandContainer = new GridPane();
+        myHandContainer.setHgap(10);
+        myHandContainer.setVgap(10);
+        myHandContainer.setAlignment(Pos.TOP_CENTER);
 
-        Button btnFight = createActionButton("Combattre", "#DC143C");
-        btnFight.setOnAction(e -> viewManager.showCombatView());
+        ScrollPane scroll = new ScrollPane(myHandContainer);
+        scroll.setFitToWidth(true);
+        scroll.setStyle("-fx-background: transparent; -fx-background-color: transparent;");
+        VBox.setVgrow(scroll, Priority.ALWAYS);
 
-        actionsBox.getChildren().addAll(btnCreate, btnTrade, btnFight);
-
-        // --- LISTE JOUEURS ---
-        Label playersTitle = new Label("Joueur(s) connecté(s)");
-        playersTitle.setStyle("-fx-font-size: 16pt; -fx-font-weight: bold;");
-
-        playersListDisplay = new VBox(10);
-        playersListDisplay.setAlignment(Pos.CENTER_LEFT);
-
-        layout.getChildren().addAll(title, myHandTitle, handDisplay, actionsTitle, actionsBox, playersTitle, playersListDisplay);
+        section.getChildren().addAll(title, btnCreate, scroll);
+        return section;
     }
 
-    // --- STYLING METHODS (Adaptées de PlateauJeuPage) ---
+    // =========================================================================
+    // SECTION 2 : CENTRE (JOUEURS ET ACTIONS)
+    // =========================================================================
 
-    private void styleCardContainer(HBox box) {
-        box.setStyle(
-                "-fx-border-color: lightgray;" +
-                        "-fx-border-radius: 15;" +
-                        "-fx-background-radius: 15;" +
-                        "-fx-padding: 10;" +
-                        "-fx-background-color: rgba(255, 255, 255, 0.6);" +
-                        "-fx-effect: dropshadow(gaussian, rgba(0,0,0,0.15), 8, 0, 0, 2);"
-        );
-        box.setMinHeight(260); // Hauteur min pour l'esthétique
-        box.setAlignment(Pos.CENTER_LEFT);
+    private VBox createCenterSection() {
+        centerContainer = new VBox(20);
+        centerContainer.setAlignment(Pos.TOP_CENTER);
+        centerContainer.setPadding(new Insets(15));
+        centerContainer.setStyle("-fx-background-color: rgba(0,0,0,0.1); -fx-background-radius: 15; -fx-border-color: #FFC107; -fx-border-width: 3; -fx-border-radius: 12;");
+
+        Label title = new Label("JOUEURS CONNECTÉS");
+        title.setStyle("-fx-font-size: 16pt; -fx-font-weight: bold; -fx-text-fill: #FF6F00;");
+
+        // Liste des joueurs (sera remplie dynamiquement)
+        VBox playersList = new VBox(10);
+        playersList.setId("playersList"); // Pour le retrouver lors du refresh
+        playersList.setAlignment(Pos.CENTER);
+
+        Separator sep = new Separator();
+
+        // Zone de sélection
+        VBox selectionBox = new VBox(10);
+        selectionBox.setAlignment(Pos.CENTER);
+        selectionBox.setStyle("-fx-background-color: rgba(255,255,255,0.3); -fx-padding: 10; -fx-background-radius: 10;");
+
+        Label selTitle = new Label("SÉLECTION");
+        selTitle.setStyle("-fx-font-weight: bold; -fx-underline: true;");
+
+        lblMySelection = new Label("Moi: Aucune");
+        lblMySelection.setStyle("-fx-text-fill: #2E7D32; -fx-font-weight: bold;");
+
+        lblOppSelection = new Label("Adv: Aucun");
+        lblOppSelection.setStyle("-fx-text-fill: #1565C0; -fx-font-weight: bold;");
+
+        lblOppCardSelection = new Label("Carte Adv: Aucune");
+        lblOppCardSelection.setStyle("-fx-text-fill: #C62828; -fx-font-weight: bold;");
+
+        selectionBox.getChildren().addAll(selTitle, lblMySelection, lblOppSelection, lblOppCardSelection);
+
+        // Boutons d'action
+        btnCombat = new Button("⚔️ COMBAT");
+        btnCombat.setStyle("-fx-background-color: #D32F2F; -fx-text-fill: white; -fx-font-size: 14pt; -fx-font-weight: bold;");
+        btnCombat.setMaxWidth(Double.MAX_VALUE);
+        btnCombat.setOnAction(e -> openCombatConfirmation());
+
+        btnTrade = new Button("🔄 ÉCHANGE");
+        btnTrade.setStyle("-fx-background-color: #FBC02D; -fx-text-fill: black; -fx-font-size: 14pt; -fx-font-weight: bold;");
+        btnTrade.setMaxWidth(Double.MAX_VALUE);
+        btnTrade.setOnAction(e -> openTradeConfirmation());
+
+        // Désactivés par défaut tant que pas de sélection complète
+        btnCombat.setDisable(true);
+        btnTrade.setDisable(true);
+
+        centerContainer.getChildren().addAll(title, playersList, sep, selectionBox, btnCombat, btnTrade);
+        return centerContainer;
     }
 
-    private Button createActionButton(String text, String color) {
-        Button btn = new Button(text);
-        btn.setStyle("-fx-font-size: 14pt; -fx-font-weight: bold; -fx-background-color: " + color + "; -fx-text-fill: white; -fx-padding: 10 20; -fx-background-radius: 8;");
-        btn.setCursor(Cursor.HAND);
-        return btn;
+    // =========================================================================
+    // SECTION 3 : MAIN ADVERSAIRE (DROITE)
+    // =========================================================================
+
+    private VBox createOpponentHandSection() {
+        VBox section = new VBox(15);
+        section.setAlignment(Pos.TOP_CENTER);
+        section.setPadding(new Insets(15));
+        section.setStyle("-fx-background-color: rgba(255,255,255,0.6); -fx-background-radius: 15; -fx-border-color: #D32F2F; -fx-border-width: 3; -fx-border-radius: 12;");
+
+        Label title = new Label("MAIN ADVERSE");
+        title.setStyle("-fx-font-size: 18pt; -fx-font-weight: bold; -fx-text-fill: #C62828;");
+
+        Label info = new Label("Cliquez sur un joueur pour voir ses cartes");
+        info.setStyle("-fx-font-style: italic; -fx-text-fill: grey;");
+
+        opponentHandContainer = new GridPane();
+        opponentHandContainer.setHgap(10);
+        opponentHandContainer.setVgap(10);
+        opponentHandContainer.setAlignment(Pos.TOP_CENTER);
+
+        ScrollPane scroll = new ScrollPane(opponentHandContainer);
+        scroll.setFitToWidth(true);
+        scroll.setStyle("-fx-background: transparent; -fx-background-color: transparent;");
+        VBox.setVgrow(scroll, Priority.ALWAYS);
+
+        section.getChildren().addAll(title, info, scroll);
+        return section;
     }
 
-    // --- LOGIQUE VISUELLE DES CARTES ---
+    // =========================================================================
+    // LOGIQUE DE MISE A JOUR (REFRESH)
+    // =========================================================================
 
-    private VBox createCardPlaceholder(CardViewModel cardData) {
-        // Facteur d'échelle pour adapter la taille
-        double scale = 1.0;
-        double width = 160 * scale;
+    // Dans src/view/GameBoardView.java
 
-        // Simulation d'une catégorie basée sur l'ID pour la couleur (1-5)
-        int category = (cardData.getId() % 5) + 1;
-
-        VBox card = new VBox(5);
-        card.setAlignment(Pos.TOP_CENTER);
-        card.setPrefWidth(width);
-        card.setStyle(getCategoryStyle(category));
-        card.setCursor(Cursor.HAND);
-
-        // Header
-        Label title = new Label(cardData.getName());
-        title.setStyle("-fx-font-weight: bold; -fx-font-size: 10pt; -fx-text-fill: #333333;");
-
-        // Image Placeholder
-        VBox imgPlaceholder = new VBox();
-        imgPlaceholder.setPrefHeight(100);
-        imgPlaceholder.setAlignment(Pos.CENTER);
-        imgPlaceholder.setStyle("-fx-background-color: #F5F5F5; -fx-border-color: #333333; -fx-border-width: 1;");
-        imgPlaceholder.getChildren().add(new Label("IMG"));
-
-        // Health Bar (On suppose MaxHP = 200 pour l'exemple visuel, ou cardData.getHealth() si c'est le max)
-        StackPane healthBar = createHealthBar(cardData.getHealth(), 200, width - 10);
-
-        // Stats Row
-        HBox statRow = new HBox(5);
-        statRow.setAlignment(Pos.CENTER);
-        statRow.getChildren().addAll(
-                createStatBox("ATK", cardData.getAttack(), "#FF9800"),
-                createStatBox("DEF", cardData.getDefense(), "#2196F3")
-        );
-
-        card.getChildren().addAll(title, imgPlaceholder, healthBar, statRow);
-
-        // Interaction
-        card.setOnMouseClicked(e -> showCardDetails(cardData));
-
-        return card;
-    }
-
-    private String getCategoryStyle(int category) {
-        String borderColor;
-        String bgColor;
-        switch (category) {
-            case 1: bgColor = "#8BC34A"; borderColor = "#4CAF50"; break; // Nature
-            case 2: bgColor = "#B0BEC5"; borderColor = "#78909C"; break; // Metal
-            case 3: bgColor = "#FF8A65"; borderColor = "#F44336"; break; // Fire
-            case 4: bgColor = "#9C27B0"; borderColor = "#673AB7"; break; // Dark
-            default: bgColor = "#4FC3F7"; borderColor = "#03A9F4"; break; // Ice
+    public void refresh() {
+        // --- CORRECTIF : Vérification de sécurité ---
+        // Si l'interface n'est pas encore initialisée (getView() n'a pas encore été appelé),
+        // on arrête ici pour éviter le NullPointerException.
+        if (myHandContainer == null || opponentHandContainer == null) {
+            return;
         }
-        return "-fx-border-color: " + borderColor + "; -fx-border-width: 3; -fx-background-color: " + bgColor + "; -fx-padding: 5; -fx-background-radius: 10; -fx-border-radius: 8;";
+
+        // --- Le reste de votre code refresh() reste identique ---
+
+        // 1. Rafraichir MA MAIN
+        myHandContainer.getChildren().clear();
+        PlayerViewModel me = controller.getCurrentPlayerViewModel();
+
+        if (me != null && me.getCards() != null) {
+            int col = 0, row = 0;
+            for (CardViewModel c : me.getCards()) {
+                // Vérifie si cette carte est celle sélectionnée
+                boolean isSelected = (selectedMyCard != null && selectedMyCard.getId() == c.getId());
+
+                // Création de la Vue avec le Callback
+                // NOTE : Assurez-vous d'avoir bien le constructeur compatible dans CardView ou d'utiliser celui à 4 paramètres
+                CardView cv = new CardView(c, 0.9, isSelected, () -> {
+                    if (isSelected) {
+                        this.selectedMyCard = null;
+                    } else {
+                        this.selectedMyCard = c;
+                    }
+                    updateSelectionUI();
+                });
+
+                myHandContainer.add(cv, col, row);
+                col++;
+                if (col > 2) { col = 0; row++; }
+            }
+        }
+
+        // 2. Rafraichir LISTE JOUEURS (Centre)
+        VBox playersList = (VBox) centerContainer.lookup("#playersList");
+        if (playersList != null) {
+            playersList.getChildren().clear();
+            for (PlayerViewModel p : controller.getOtherPlayersViewModels()) {
+                Button pBtn = new Button(p.getName() + " (" + p.getCardCount() + ")");
+                pBtn.setMaxWidth(Double.MAX_VALUE);
+
+                if (selectedOpponent != null && selectedOpponent.getId() == p.getId()) {
+                    pBtn.setStyle("-fx-background-color: #1565C0; -fx-text-fill: white; -fx-font-weight: bold;");
+                } else {
+                    pBtn.setStyle("-fx-background-color: #90CAF9; -fx-text-fill: black;");
+                }
+
+                pBtn.setOnAction(e -> {
+                    this.selectedOpponent = p;
+                    this.selectedOpponentCard = null;
+                    updateSelectionUI();
+                });
+                playersList.getChildren().add(pBtn);
+            }
+        }
+
+        // 3. Rafraichir MAIN ADVERSAIRE (Droite)
+        opponentHandContainer.getChildren().clear();
+        if (selectedOpponent != null) {
+            int col = 0, row = 0;
+            for (CardViewModel c : selectedOpponent.getCards()) {
+                boolean isSelected = (selectedOpponentCard != null && selectedOpponentCard.getId() == c.getId());
+
+                CardView cv = new CardView(c, 0.9, isSelected, () -> {
+                    if (isSelected) {
+                        this.selectedOpponentCard = null;
+                    } else {
+                        this.selectedOpponentCard = c;
+                    }
+                    updateSelectionUI();
+                });
+
+                opponentHandContainer.add(cv, col, row);
+                col++;
+                if (col > 2) { col = 0; row++; }
+            }
+        }
     }
 
-    private StackPane createHealthBar(int current, int max, double width) {
-        double percentage = Math.max(0, Math.min(1.0, (double) current / max));
+    private void updateSelectionUI() {
+        // Mettre à jour les textes
+        lblMySelection.setText("Moi: " + (selectedMyCard != null ? selectedMyCard.getName() : "Aucune"));
+        lblOppSelection.setText("Adv: " + (selectedOpponent != null ? selectedOpponent.getName() : "Aucun"));
+        lblOppCardSelection.setText("Carte Adv: " + (selectedOpponentCard != null ? selectedOpponentCard.getName() : "Aucune"));
 
-        Rectangle bg = new Rectangle(width, 10);
-        bg.setFill(javafx.scene.paint.Color.web("#BDBDBD"));
-        bg.setArcWidth(5); bg.setArcHeight(5);
+        // Activer les boutons seulement si TOUT est sélectionné
+        boolean ready = (selectedMyCard != null && selectedOpponent != null && selectedOpponentCard != null);
+        btnCombat.setDisable(!ready);
+        btnTrade.setDisable(!ready);
 
-        Rectangle fg = new Rectangle(width * percentage, 10);
-        fg.setFill(percentage > 0.5 ? javafx.scene.paint.Color.web("#4CAF50") : javafx.scene.paint.Color.web("#F44336"));
-        fg.setArcWidth(5); fg.setArcHeight(5);
-
-        StackPane pane = new StackPane(bg, fg);
-        pane.setAlignment(Pos.CENTER_LEFT);
-        return pane;
+        // Rafraichir les bordures des cartes
+        refresh();
     }
 
-    private HBox createStatBox(String label, int value, String color) {
-        Label l = new Label(label + ": " + value);
-        l.setStyle("-fx-background-color: " + color + "; -fx-text-fill: white; -fx-padding: 2 4; -fx-font-size: 9pt; -fx-font-weight: bold; -fx-background-radius: 3;");
-        return new HBox(l);
-    }
-
-    // --- POPUPS & DIALOGUES ---
+    // =========================================================================
+    // POPUPS & DIALOGUES
+    // =========================================================================
 
     private void openCreateCardDialog() {
         Stage dialog = new Stage();
         dialog.initModality(Modality.APPLICATION_MODAL);
         dialog.initOwner(viewManager.getStage());
-        dialog.setTitle("Créer une nouvelle carte");
+        dialog.setTitle("Créer une carte");
 
-        VBox form = new VBox(15);
+        VBox form = new VBox(10);
         form.setPadding(new Insets(20));
-        form.setAlignment(Pos.CENTER_LEFT);
-        form.setStyle("-fx-background-color: #ECEFF1;");
+        form.setAlignment(Pos.CENTER);
 
-        TextField nameField = new TextField(); nameField.setPromptText("Nom (ex. Dragon)");
-        TextField hpField = new TextField("100");
-        TextField apField = new TextField("50");
-        TextField dpField = new TextField("50");
+        TextField tfName = new TextField(); tfName.setPromptText("Nom de la carte");
+        TextField tfHP = new TextField("100"); tfHP.setPromptText("HP");
+        TextField tfAP = new TextField("50"); tfAP.setPromptText("ATK");
+        TextField tfDP = new TextField("50"); tfDP.setPromptText("DEF");
 
-        Button btnConfirm = createActionButton("Create", "#4CAF50");
-        Label errorLbl = new Label(); errorLbl.setStyle("-fx-text-fill: red;");
-
-        btnConfirm.setOnAction(e -> {
+        Button btnOk = new Button("Créer");
+        btnOk.setStyle("-fx-background-color: #4CAF50; -fx-text-fill: white;");
+        btnOk.setOnAction(e -> {
             try {
-                if (nameField.getText().isEmpty()) throw new IllegalArgumentException("Nom requis");
-                int hp = Integer.parseInt(hpField.getText());
-                int ap = Integer.parseInt(apField.getText());
-                int dp = Integer.parseInt(dpField.getText());
-                controller.createCard(nameField.getText(), ap, dp, hp);
+                String nom = tfName.getText();
+                int hp = Integer.parseInt(tfHP.getText());
+                int ap = Integer.parseInt(tfAP.getText());
+                int dp = Integer.parseInt(tfDP.getText());
+                controller.createCard(nom, ap, dp, hp);
                 dialog.close();
             } catch (Exception ex) {
-                errorLbl.setText("Entrée invalide: " + ex.getMessage());
+                System.err.println("Erreur saisie: " + ex.getMessage());
             }
         });
 
-        form.getChildren().addAll(new Label("Détails des cartes:"), nameField, new Label("HP:"), hpField, new Label("AP:"), apField, new Label("DP:"), dpField, btnConfirm, errorLbl);
-        dialog.setScene(new Scene(form, 300, 450));
+        form.getChildren().addAll(new Label("Nouvelle Carte"), tfName, tfHP, tfAP, tfDP, btnOk);
+        dialog.setScene(new Scene(form, 250, 300));
         dialog.show();
     }
 
-    private void showCardDetails(CardViewModel c) {
-        // Implémentation simplifiée du popup de détails
-        System.out.println("Clique sur " + c.getName());
+    private void openCombatConfirmation() {
+        Stage dialog = new Stage();
+        dialog.initModality(Modality.APPLICATION_MODAL);
+        dialog.setTitle("Confirmation Combat");
+
+        VBox box = new VBox(15);
+        box.setPadding(new Insets(20));
+        box.setAlignment(Pos.CENTER);
+        box.setStyle("-fx-background-color: #FFEBEE;");
+
+        Label title = new Label("⚔️ COMBAT ⚔️");
+        title.setStyle("-fx-font-size: 20px; -fx-text-fill: #C62828; -fx-font-weight: bold;");
+
+        Label desc = new Label("Voulez-vous attaquer " + selectedOpponent.getName() + " ?\n" +
+                "Votre carte : " + selectedMyCard.getName() + " (ATK: " + selectedMyCard.getAttack() + ")\n" +
+                "Contre : " + selectedOpponentCard.getName());
+        desc.setStyle("-fx-text-alignment: center;");
+
+        HBox btns = new HBox(10);
+        btns.setAlignment(Pos.CENTER);
+        Button btnYes = new Button("ATTAQUER");
+        btnYes.setStyle("-fx-background-color: #D32F2F; -fx-text-fill: white; -fx-font-weight: bold;");
+        btnYes.setOnAction(e -> {
+            controller.combatCard(selectedMyCard.getId(), selectedOpponent.getId(), selectedOpponentCard.getId());
+            dialog.close();
+        });
+
+        Button btnNo = new Button("Annuler");
+        btnNo.setOnAction(e -> dialog.close());
+
+        btns.getChildren().addAll(btnYes, btnNo);
+        box.getChildren().addAll(title, desc, btns);
+
+        dialog.setScene(new Scene(box, 400, 250));
+        dialog.show();
     }
 
-    public Node getView() { return layout; }
+    private void openTradeConfirmation() {
+        Stage dialog = new Stage();
+        dialog.initModality(Modality.APPLICATION_MODAL);
+        dialog.setTitle("Confirmation Échange");
 
-    // --- MISE A JOUR UI (Observer) ---
-    public void refresh() {
-        handDisplay.getChildren().clear();
-        playersListDisplay.getChildren().clear();
+        VBox box = new VBox(15);
+        box.setPadding(new Insets(20));
+        box.setAlignment(Pos.CENTER);
+        box.setStyle("-fx-background-color: #FFF8E1;");
 
-        // Afficher ma main
-        PlayerViewModel me = controller.getCurrentPlayerViewModel();
-        if (me != null && me.getCards() != null) {
-            for (CardViewModel c : me.getCards()) {
-                handDisplay.getChildren().add(createCardPlaceholder(c));
-            }
-        }
+        Label title = new Label("🔄 ÉCHANGE 🔄");
+        title.setStyle("-fx-font-size: 20px; -fx-text-fill: #F57F17; -fx-font-weight: bold;");
 
-        // Afficher les autres joueurs (Boutons stylisés)
-        for (PlayerViewModel op : controller.getOtherPlayersViewModels()) {
-            Button playerBtn = new Button(op.getName() + " (" + op.getCardCount() + " cartes)");
-            playerBtn.setStyle("-fx-background-color: #F08080; -fx-text-fill: black; -fx-font-weight: bold; -fx-padding: 5 15; -fx-background-radius: 20;");
-            playerBtn.setCursor(Cursor.HAND);
-            playerBtn.setOnAction(e -> System.out.println("Joueur sélectionné: " + op.getName()));
-            playersListDisplay.getChildren().add(playerBtn);
-        }
+        Label desc = new Label("Proposer un échange à " + selectedOpponent.getName() + " ?\n" +
+                "Vous donnez : " + selectedMyCard.getName() + "\n" +
+                "Vous demandez : " + selectedOpponentCard.getName());
+        desc.setStyle("-fx-text-alignment: center;");
+
+        HBox btns = new HBox(10);
+        btns.setAlignment(Pos.CENTER);
+        Button btnYes = new Button("PROPOSER");
+        btnYes.setStyle("-fx-background-color: #FBC02D; -fx-text-fill: black; -fx-font-weight: bold;");
+        btnYes.setOnAction(e -> {
+            controller.exchangeCard(selectedMyCard.getId(), selectedOpponent.getId(), selectedOpponentCard.getId());
+            dialog.close();
+        });
+
+        Button btnNo = new Button("Annuler");
+        btnNo.setOnAction(e -> dialog.close());
+
+        btns.getChildren().addAll(btnYes, btnNo);
+        box.getChildren().addAll(title, desc, btns);
+
+        dialog.setScene(new Scene(box, 400, 250));
+        dialog.show();
     }
+
+    // =========================================================================
+    // OBSERVER METHODS
+    // =========================================================================
 
     @Override public void onGameStateChanged(GameState gameState) { Platform.runLater(this::refresh); }
-    @Override public void onError(String msg) {}
-    @Override public void onExchangeRequestReceived(String r, int f, String n, int o, int req) {}
-    @Override public void onCombatRequestReceived(String r, int f, String n, int a, int t) {}
-    @Override public void onCombatCompleted(CombatResult result) {}
-    @Override public void onExchangeRequestReceived(String r, String f, String n, String o, String req) {}
-    @Override public void onCombatRequestReceived(String r, String f, String n, String a, String t) {}
+    @Override public void onError(String msg) {
+        Platform.runLater(() -> {
+            Alert alert = new Alert(Alert.AlertType.ERROR, msg);
+            alert.show();
+        });
+    }
+    // Notifications simples pour l'instant (on pourrait ajouter des popups de réception ici aussi)
+    @Override public void onExchangeRequestReceived(String r, int f, String n, int o, int req) {
+        Platform.runLater(() -> {
+            Alert alrt = new Alert(Alert.AlertType.INFORMATION, "Demande d'échange reçue de " + n);
+            alrt.show();
+        });
+    }
+    @Override public void onCombatRequestReceived(String r, int f, String n, int a, int t) {
+        Platform.runLater(() -> {
+            Alert alrt = new Alert(Alert.AlertType.WARNING, "Vous êtes attaqué par " + n + " !");
+            alrt.show();
+        });
+    }
+    @Override public void onCombatCompleted(CombatResult result) {
+        Platform.runLater(() -> {
+            Alert alrt = new Alert(Alert.AlertType.INFORMATION, "Combat terminé ! Dégâts : " + result.getDamageDealt());
+            alrt.show();
+            refresh(); // Rafraichir les PV
+        });
+    }
 }
