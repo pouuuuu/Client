@@ -68,8 +68,8 @@ public class ViewManager {
         mainLayout.setCenter(loginView.getView());
     }
     public void showGameView() {
-        gameBoardView.refresh();
         mainLayout.setCenter(gameBoardView.getView());
+        gameBoardView.refresh();
     }
 
     public Stage getStage() { return stage; }

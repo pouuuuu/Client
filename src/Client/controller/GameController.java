@@ -125,28 +125,32 @@ public class GameController {
     }
 
     private void handleTradeRequest(String json) {
-        // 1. On récupère les infos via le jsonReader
-        int traderId = jsonReader.getTradeSenderId(json);
-        String traderName = jsonReader.getTradeSenderName(json);
-        int myCardId = jsonReader.getTradeRequestedCardId(json);
-        int theirCardId = jsonReader.getTradeOfferedCardId(json);
+        try {
+            System.out.println("[CTRL] Traitement Trade Request..."); // Log de debug
 
-        // 2. On construit le message pour l'utilisateur
-        String msg = "ECHANGE PROPOSÉ par " + traderName + "\n" +
-                "Il te donne la carte #" + theirCardId + "\n" +
-                "Contre ta carte #" + myCardId;
+            // 1. Lecture des données
+            int traderId = jsonReader.getTradeSenderId(json);
+            String traderName = jsonReader.getTradeSenderName(json);
+            int myCardId = jsonReader.getTradeRequestedCardId(json);
+            int theirCardId = jsonReader.getTradeOfferedCardId(json);
 
-        // 3. On appelle la vue (GameBoardView) pour afficher la popup
-        // On définit ici ce qui se passe quand on clique sur OUI ou NON
-        if (viewManager.getGameBoardView() != null) {
-            viewManager.getGameBoardView().showTradePopup(
-                    msg,
-                    // Action si OUI : On envoie l'acceptation avec tous les IDs
-                    () -> serverConnection.sendTradeResponse(true, traderId, myCardId, theirCardId),
+            // 2. Construction du message
+            String msg = "ECHANGE PROPOSÉ par " + traderName + "\n" +
+                    "Il te donne la carte #" + theirCardId + "\n" +
+                    "Contre ta carte #" + myCardId;
 
-                    // Action si NON : On envoie le refus avec tous les IDs
-                    () -> serverConnection.sendTradeResponse(false, traderId, myCardId, theirCardId)
-            );
+            // 3. Appel UI
+            if (viewManager.getGameBoardView() != null) {
+                viewManager.getGameBoardView().showTradePopup(
+                        msg,
+                        () -> serverConnection.sendTradeResponse(true, traderId, myCardId, theirCardId),
+                        () -> serverConnection.sendTradeResponse(false, traderId, myCardId, theirCardId)
+                );
+            }
+        } catch (Exception e) {
+            // C'est ici qu'on attrape l'erreur qui tuait le thread !
+            System.err.println("[ERREUR TRADE] Impossible de traiter la demande : " + e.getMessage());
+            e.printStackTrace();
         }
     }
 

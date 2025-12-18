@@ -95,7 +95,10 @@ public class jsonReader {
 
     // ID du joueur qui propose l'échange
     public int getTradeSenderId(String json) {
-        return Integer.parseInt(extractValue(json, "fromPlayerId"));
+        // DOIT être "fromPlayerId" pour correspondre au paquet du serveur
+        String val = extractValue(json, "fromPlayerId");
+        if (val.isEmpty()) return -1; // Sécurité
+        return Integer.parseInt(val);
     }
 
     // Nom du joueur qui propose

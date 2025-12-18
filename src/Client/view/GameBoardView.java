@@ -175,7 +175,7 @@ public class GameBoardView implements GameObserver {
         btnCombat.setDisable(true);
         btnTrade.setDisable(true);
 
-        centerContainer.getChildren().addAll(title, playersList, sep, selectionBox, btnCombat, btnTrade);
+        centerContainer.getChildren().addAll(title, playersList, sep, selectionBox, btnCombat, btnTrade, notificationBox);
         return centerContainer;
     }
 
@@ -428,6 +428,11 @@ public class GameBoardView implements GameObserver {
 
     public void showTradePopup(String message, Runnable onAccept, Runnable onDeny) {
         Platform.runLater(() -> {
+            System.out.println("[VIEW] Affichage Popup Trade");
+            if (notificationBox == null) {
+                System.err.println("[VIEW] ERREUR: notificationBox est null !");
+                return;
+            }
             notificationBox.getChildren().clear();
 
             // Création du panneau visuel
