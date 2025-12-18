@@ -24,6 +24,7 @@ public class CardViewModel {
     public int getDefense() { return defense; }
     public int getHealth() { return health; }
 
+
     // AJOUTÉ
     public int getMaxHealth() { return maxHealth; }
 }

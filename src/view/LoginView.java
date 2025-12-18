@@ -66,7 +66,7 @@ public class LoginView {
             errorLabel.setTextFill(Color.BLUE);
             boolean success = controller.connect(nameField.getText());
             if (!success) {
-                errorLabel.setText("Connecxion échouée (Serveur indisponible ?)");
+                errorLabel.setText("Connexion échouée (Serveur indisponible)");
                 errorLabel.setTextFill(Color.RED);
             }
         });

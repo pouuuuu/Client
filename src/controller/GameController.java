@@ -55,10 +55,8 @@ public class GameController {
                 break;
 
             case "CONNECTED_PLAYERS": {
-                ArrayList<Player> players = jsonReader.parseConnectedPlayers(json);
-                for (Player p : players) {
-                    addOrUpdatePlayer(p);
-                }
+                ArrayList<Player> serverList = jsonReader.parseConnectedPlayers(json);
+                synchronizePlayers(serverList);
                 break;
             }
 
@@ -223,6 +221,60 @@ public class GameController {
             }
         }
         return res;
+    }
+
+    private void synchronizePlayers(ArrayList<Player> serverPlayers) {
+        // Liste actuelle des joueurs dans le client
+        ArrayList<Player> localPlayers = gameState.getConnectedPlayers();
+        Player me = gameState.getCurrentPlayer();
+
+        // ---------------------------------------------------------
+        // 1. SUPPRESSION : Si un joueur est local mais PAS sur le serveur -> On l'enlève
+        // ---------------------------------------------------------
+        localPlayers.removeIf(localPlayer -> {
+            // Sécurité : Ne jamais se supprimer soi-même
+            if (me != null && localPlayer.getId() == me.getId()) return false;
+
+            // On vérifie si ce joueur local existe dans la liste reçue du serveur
+            boolean existsOnServer = false;
+            for (Player serverPlayer : serverPlayers) {
+                if (serverPlayer.getId() == localPlayer.getId()) {
+                    existsOnServer = true;
+                    break;
+                }
+            }
+
+            // Si il n'existe pas sur le serveur, on le supprime (removeIf renvoie true)
+            if (!existsOnServer) {
+                System.out.println("[CTRL] Joueur déconnecté (Suppression): " + localPlayer.getName());
+            }
+            return !existsOnServer;
+        });
+
+        // ---------------------------------------------------------
+        // 2. AJOUT : Si un joueur est sur le serveur mais PAS en local -> On le crée
+        // ---------------------------------------------------------
+        for (Player serverPlayer : serverPlayers) {
+            // On ignore notre propre ID (déjà géré)
+            if (me != null && serverPlayer.getId() == me.getId()) continue;
+
+            boolean existsLocally = false;
+            for (Player localPlayer : localPlayers) {
+                if (localPlayer.getId() == serverPlayer.getId()) {
+                    existsLocally = true;
+                    break;
+                }
+            }
+
+            // S'il n'existe pas chez nous, on l'ajoute
+            if (!existsLocally) {
+                System.out.println("[CTRL] Nouveau joueur (Création): " + serverPlayer.getName());
+                localPlayers.add(serverPlayer);
+            }
+        }
+
+        // Mise à jour de l'affichage
+        notifyObservers();
     }
 
     // Debug

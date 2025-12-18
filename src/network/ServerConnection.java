@@ -4,6 +4,7 @@ import controller.GameController;
 import jsonUtils.jsonBuilder;
 import java.io.*;
 import java.net.Socket;
+import java.net.InetSocketAddress;
 
 public class ServerConnection {
     // Adapter l'IP selon votre configuration
@@ -37,11 +38,12 @@ public class ServerConnection {
         try {
             // 1. Open socket
             socket = new Socket(SERVER_IP, SERVER_PORT);
+
             input = new BufferedReader(new InputStreamReader(socket.getInputStream()));
             output = new PrintWriter(socket.getOutputStream(), true);
             connected = true;
 
-            System.out.println("[NETWORK] Connection established!");
+            System.out.println("[NETWORK] Connection established");
 
             // 2. Start listening thread immediately
             startListenerThread();

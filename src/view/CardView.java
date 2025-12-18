@@ -121,8 +121,8 @@ public class CardView extends VBox {
             dialog.close();
         });
 
-        Button btnDetails = new Button("📋 VOIR DÉTAILS");
-        btnDetails.setStyle("-fx-background-color: #2196F3; -fx-text-fill: white; -fx-font-size: 12pt; -fx-padding: 10 20;");
+        Button btnDetails = new Button("VOIR DÉTAILS");
+        btnDetails.setStyle("-fx-background-color: #2196F3; -fx-text-fill: white; -fx-font-size: 12pt; -fx-font-weight: bold; -fx-padding: 10 20;");
         btnDetails.setMaxWidth(Double.MAX_VALUE);
         btnDetails.setOnAction(e -> {
             dialog.close();
