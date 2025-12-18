@@ -81,6 +81,27 @@ public class jsonReader {
         return list;
     }
 
+    public ArrayList<Player> parseConnectedPlayers(String json) {
+        ArrayList<Player> list = new ArrayList<>();
+        String dataContent = extractArrayContent(json, "data"); // Extrait le contenu de [...]
+
+        if (!dataContent.isEmpty()) {
+            // On découpe chaque objet {...}
+            ArrayList<String> objects = splitJsonObjects(dataContent);
+            for (String obj : objects) {
+                int id = parseIntSafe(extractValue(obj, "user_id"));
+                String name = extractValue(obj, "user_name");
+
+                if (id != 0) {
+                    Player p = new Player(id, name);
+                    p.setConnected(true);
+                    list.add(p);
+                }
+            }
+        }
+        return list;
+    }
+
     public Player parsePlayer(String json) {
         try {
             int id = parseIntSafe(extractValue(json, "id"));
@@ -127,6 +148,29 @@ public class jsonReader {
         return null;
     }
 
+    public ArrayList<Card> parseConnectedCards(String json) {
+        ArrayList<Card> list = new ArrayList<>();
+        String dataContent = extractArrayContent(json, "data");
+
+        if (!dataContent.isEmpty()) {
+            ArrayList<String> objects = splitJsonObjects(dataContent);
+            for (String obj : objects) {
+                int id = parseIntSafe(extractValue(obj, "card_id"));
+                String name = extractValue(obj, "cardName");
+                int ap = parseIntSafe(extractValue(obj, "AP"));
+                int dp = parseIntSafe(extractValue(obj, "DP"));
+                int hp = parseIntSafe(extractValue(obj, "HP"));
+                int ownerId = parseIntSafe(extractValue(obj, "user_id")); // Important : le user_id du JSON devient l'ownerId
+
+                if (id != 0) {
+                    // On utilise le constructeur avec ownerId et maxHealth (hp par défaut)
+                    list.add(new Card(id, name, ap, dp, hp, ownerId));
+                }
+            }
+        }
+        return list;
+    }
+
     // --- PRIVATE HELPERS ---
 
     private String extractValue(String json, String key) {
@@ -171,6 +215,23 @@ public class jsonReader {
         }
         if (sb.length() > 0) l.add(sb.toString());
         return l;
+    }
+
+    private String extractArrayContent(String json, String key) {
+        int keyIndex = json.indexOf("\"" + key + "\"");
+        if (keyIndex == -1) return "";
+
+        int startBracket = json.indexOf("[", keyIndex);
+        if (startBracket == -1) return "";
+
+        int endBracket = json.lastIndexOf("]"); // Version simplifiée (suppose que data est le dernier ou principal tableau)
+        // Pour être plus robuste sur des JSON complexes imbriqués, il faudrait compter les crochets.
+        // Mais vu vos logs, data est le gros bloc principal.
+
+        if (endBracket > startBracket) {
+            return json.substring(startBracket + 1, endBracket);
+        }
+        return "";
     }
 
     private int parseIntSafe(String s) {

@@ -23,6 +23,12 @@ public class Hand {
     }
 
     public void addCard(Card card) {
+        for (Card existingCard : this.cards) {
+            if (existingCard.getId() == card.getId()) {
+                return;
+            }
+        }
+
         this.cards.add(card);
     }
 

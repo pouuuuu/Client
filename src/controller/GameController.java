@@ -54,18 +54,19 @@ public class GameController {
                 handleAuthSuccess(id);
                 break;
 
-            case "CONNECTED_PLAYERS":
-                Player p = jsonReader.parsePlayer(json);
-                if (p != null) {
+            case "CONNECTED_PLAYERS": {
+                ArrayList<Player> players = jsonReader.parseConnectedPlayers(json);
+                for (Player p : players) {
                     addOrUpdatePlayer(p);
                 }
                 break;
+            }
 
             // --- 2. RECEPTION D'UNE CARTE ---
-            case "CONNECTED_PLAYERS_CARDS": {// Le serveur envoie une carte
-                Card c = jsonReader.parseCard(json);
-                if (c != null) {
-                    addCardToOwner(c);
+            case "CONNECTED_PLAYERS_CARDS": {
+                ArrayList<Card> cards = jsonReader.parseConnectedCards(json);
+                for (Card c : cards) {
+                    distributeCard(c);
                 }
                 break;
             }
@@ -129,6 +130,7 @@ public class GameController {
         notifyObservers();
     }
 
+
     // --- 4. SEND TO SERVER ---
 
     public void createCard(String name, int atk, int def, int hp) {
@@ -169,14 +171,13 @@ public class GameController {
     }
 
     private void addOrUpdatePlayer(Player newP) {
-        // Si c'est moi (même ID), je mets juste à jour mon nom si besoin
-        Player me = gameState.getCurrentPlayer();
-        if (me != null && me.getId() == newP.getId()) {
-            // Optionnel : update du nom si le serveur l'envoie
+        // On vérifie si c'est "Moi" (basé sur l'ID qu'on a reçu à l'AUTH)
+        // Si vous stockez votre ID dans une variable 'myPlayerId' :
+        if (gameState.getCurrentPlayer() != null && newP.getId() == gameState.getCurrentPlayer().getId()) {
+            // C'est moi, on ne fait rien ou on met à jour le nom
             return;
         }
 
-        // Sinon, on regarde si le joueur existe déjà dans la liste
         boolean found = false;
         for (Player existing : gameState.getConnectedPlayers()) {
             if (existing.getId() == newP.getId()) {
@@ -184,22 +185,18 @@ public class GameController {
                 break;
             }
         }
-
         if (!found) {
-            System.out.println("[CTRL] Nouveau joueur connecté : " + newP.getName());
             gameState.getConnectedPlayers().add(newP);
             notifyObservers();
         }
     }
 
-    private void addCardToOwner(Card card) {
+    private void distributeCard(Card card) {
         int ownerId = card.getOwnerId();
 
         // 1. Est-ce à moi ?
-        Player me = gameState.getCurrentPlayer();
-        if (me != null && me.getId() == ownerId) {
-            me.getHand().addCard(card);
-            System.out.println("[CTRL] Carte reçue pour moi : " + card.getName());
+        if (gameState.getCurrentPlayer() != null && gameState.getCurrentPlayer().getId() == ownerId) {
+            gameState.getCurrentPlayer().getHand().addCard(card);
             notifyObservers();
             return;
         }
@@ -208,13 +205,12 @@ public class GameController {
         for (Player p : gameState.getConnectedPlayers()) {
             if (p.getId() == ownerId) {
                 p.getHand().addCard(card);
-                System.out.println("[CTRL] Carte reçue pour " + p.getName() + " : " + card.getName());
                 notifyObservers();
                 return;
             }
         }
-
-        System.err.println("[CTRL] Attention : Carte reçue pour un propriétaire inconnu (ID " + ownerId + ")");
+        // Si on arrive ici, le joueur n'est pas encore connu, on pourrait stocker la carte en attente
+        System.out.println("[CTRL] Carte reçue pour joueur inconnu ID: " + ownerId);
     }
 
     private ArrayList<CardViewModel> convertCards(ArrayList<Card> cards) {
