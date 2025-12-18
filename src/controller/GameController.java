@@ -17,10 +17,7 @@ public class GameController {
     private ViewManager viewManager;
     private ServerConnection serverConnection;
     private ArrayList<GameObserver> observers;
-
-    // Ajout du parser
     private jsonReader jsonReader;
-
     private String pendingPlayerName;
 
     public GameController(Stage stage) {
@@ -57,12 +54,29 @@ public class GameController {
                 handleAuthSuccess(id);
                 break;
 
-            case "CREATE_CARD_OK":
+            case "CONNECTED_PLAYERS":
+                Player p = jsonReader.parsePlayer(json);
+                if (p != null) {
+                    addOrUpdatePlayer(p);
+                }
+                break;
+
+            // --- 2. RECEPTION D'UNE CARTE ---
+            case "CONNECTED_PLAYERS_CARDS": {// Le serveur envoie une carte
+                Card c = jsonReader.parseCard(json);
+                if (c != null) {
+                    addCardToOwner(c);
+                }
+                break;
+            }
+
+            case "CREATE_CARD_OK": {
                 Card c = jsonReader.parseCardCreated(json);
                 if (c != null) {
                     onCardCreated(c);
                 }
                 break;
+            }
 
             case "PLAYERS_UPDATE":
                 ArrayList<Player> players = jsonReader.parsePlayersList(json);
@@ -153,10 +167,66 @@ public class GameController {
         }
         return res;
     }
+
+    private void addOrUpdatePlayer(Player newP) {
+        // Si c'est moi (même ID), je mets juste à jour mon nom si besoin
+        Player me = gameState.getCurrentPlayer();
+        if (me != null && me.getId() == newP.getId()) {
+            // Optionnel : update du nom si le serveur l'envoie
+            return;
+        }
+
+        // Sinon, on regarde si le joueur existe déjà dans la liste
+        boolean found = false;
+        for (Player existing : gameState.getConnectedPlayers()) {
+            if (existing.getId() == newP.getId()) {
+                found = true;
+                break;
+            }
+        }
+
+        if (!found) {
+            System.out.println("[CTRL] Nouveau joueur connecté : " + newP.getName());
+            gameState.getConnectedPlayers().add(newP);
+            notifyObservers();
+        }
+    }
+
+    private void addCardToOwner(Card card) {
+        int ownerId = card.getOwnerId();
+
+        // 1. Est-ce à moi ?
+        Player me = gameState.getCurrentPlayer();
+        if (me != null && me.getId() == ownerId) {
+            me.getHand().addCard(card);
+            System.out.println("[CTRL] Carte reçue pour moi : " + card.getName());
+            notifyObservers();
+            return;
+        }
+
+        // 2. Est-ce à un adversaire ?
+        for (Player p : gameState.getConnectedPlayers()) {
+            if (p.getId() == ownerId) {
+                p.getHand().addCard(card);
+                System.out.println("[CTRL] Carte reçue pour " + p.getName() + " : " + card.getName());
+                notifyObservers();
+                return;
+            }
+        }
+
+        System.err.println("[CTRL] Attention : Carte reçue pour un propriétaire inconnu (ID " + ownerId + ")");
+    }
+
     private ArrayList<CardViewModel> convertCards(ArrayList<Card> cards) {
-        ArrayList<CardViewModel> r = new ArrayList<>();
-        for(Card c : cards) r.add(new CardViewModel(c.getId(), c.getName(), c.getAttack(), c.getDefense(), c.getHealth()));
-        return r;
+        ArrayList<CardViewModel> res = new ArrayList<>();
+        if (cards != null) {
+            for (Card c : cards) {
+                // On passe c.getMaxHealth() en dernier argument
+                res.add(new CardViewModel(c.getId(), c.getName(), c.getAttack(), c.getDefense(), c.getHealth(), c.getMaxHealth()
+                ));
+            }
+        }
+        return res;
     }
 
     // Debug

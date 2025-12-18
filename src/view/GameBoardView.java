@@ -5,7 +5,6 @@ import controller.GameObserver;
 import javafx.application.Platform;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
-import javafx.scene.Cursor;
 import javafx.scene.Node;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
@@ -48,8 +47,6 @@ public class GameBoardView implements GameObserver {
     public Node getView() {
         mainLayout = new BorderPane();
         mainLayout.setPadding(new Insets(10));
-        // Fond global
-        mainLayout.setStyle("-fx-background-color: linear-gradient(to bottom right, #E0F7FA, #80DEEA);");
 
         // --- EN-TÊTE ---
         Label title = new Label("PLATEAU DE JEU");
@@ -159,12 +156,12 @@ public class GameBoardView implements GameObserver {
         selectionBox.getChildren().addAll(selTitle, lblMySelection, lblOppSelection, lblOppCardSelection);
 
         // Boutons d'action
-        btnCombat = new Button("⚔️ COMBAT");
+        btnCombat = new Button("COMBAT");
         btnCombat.setStyle("-fx-background-color: #D32F2F; -fx-text-fill: white; -fx-font-size: 14pt; -fx-font-weight: bold;");
         btnCombat.setMaxWidth(Double.MAX_VALUE);
         btnCombat.setOnAction(e -> openCombatConfirmation());
 
-        btnTrade = new Button("🔄 ÉCHANGE");
+        btnTrade = new Button("ÉCHANGE");
         btnTrade.setStyle("-fx-background-color: #FBC02D; -fx-text-fill: black; -fx-font-size: 14pt; -fx-font-weight: bold;");
         btnTrade.setMaxWidth(Double.MAX_VALUE);
         btnTrade.setOnAction(e -> openTradeConfirmation());
@@ -360,7 +357,7 @@ public class GameBoardView implements GameObserver {
         box.setAlignment(Pos.CENTER);
         box.setStyle("-fx-background-color: #FFEBEE;");
 
-        Label title = new Label("⚔️ COMBAT ⚔️");
+        Label title = new Label("COMBAT");
         title.setStyle("-fx-font-size: 20px; -fx-text-fill: #C62828; -fx-font-weight: bold;");
 
         Label desc = new Label("Voulez-vous attaquer " + selectedOpponent.getName() + " ?\n" +

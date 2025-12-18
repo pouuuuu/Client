@@ -81,6 +81,52 @@ public class jsonReader {
         return list;
     }
 
+    public Player parsePlayer(String json) {
+        try {
+            int id = parseIntSafe(extractValue(json, "id"));
+            if (id == 0) id = parseIntSafe(extractValue(json, "playerId")); // Fallback
+
+            String name = extractValue(json, "user");
+            if (name.isEmpty()) name = extractValue(json, "name");
+
+            if (id != 0 && !name.isEmpty()) {
+                Player p = new Player(id, name);
+                p.setConnected(true);
+                return p;
+            }
+        } catch (Exception e) {
+            System.err.println("[JSON] Erreur parsing joueur: " + e.getMessage());
+        }
+        return null;
+    }
+
+    // --- 2. PARSING D'UNE CARTE SEULE (Avec Owner ID) ---
+    public Card parseCard(String json) {
+        try {
+            int id = parseIntSafe(extractValue(json, "id"));
+            if (id == 0) id = parseIntSafe(extractValue(json, "cardId"));
+
+            String name = extractValue(json, "name");
+            if (name.isEmpty()) name = extractValue(json, "cardName");
+
+            int hp = parseIntSafe(extractValue(json, "HP"));
+            int ap = parseIntSafe(extractValue(json, "AP")); // ou attack
+            int dp = parseIntSafe(extractValue(json, "DP")); // ou defense
+
+            // IMPORTANT : On récupère l'ID du propriétaire
+            int ownerId = parseIntSafe(extractValue(json, "ownerId"));
+            if (ownerId == 0) ownerId = parseIntSafe(extractValue(json, "id_player"));
+
+            if (id != 0) {
+                // On utilise le constructeur avec ownerId
+                return new Card(id, name, ap, dp, hp, ownerId);
+            }
+        } catch (Exception e) {
+            System.err.println("[JSON] Erreur parsing carte: " + e.getMessage());
+        }
+        return null;
+    }
+
     // --- PRIVATE HELPERS ---
 
     private String extractValue(String json, String key) {

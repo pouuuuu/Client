@@ -76,7 +76,7 @@ public class CombatView implements GameObserver {
 
         // Placeholder pour une carte au combat
         // Dans une version finale, on passerait un CardViewModel ici
-        CardViewModel dummy = new CardViewModel(99, "Carte Cachée", 0, 0, 100);
+        CardViewModel dummy = new CardViewModel(99, "Carte Cachée", 0, 0, 100, 100);
         CardView cardView = new CardView(dummy, 1.2);
 
         box.getChildren().addAll(subLbl, nameLbl, cardView);
