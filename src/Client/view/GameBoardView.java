@@ -477,6 +477,70 @@ public class GameBoardView implements GameObserver {
         });
     }
 
+    public void showSuccessPopup(String message) {
+        Platform.runLater(() -> {
+            if (notificationBox == null) return;
+            notificationBox.getChildren().clear();
+
+            // Création du panneau (Style Succès/Vert)
+            VBox panel = new VBox(15);
+            panel.setAlignment(Pos.CENTER);
+            panel.setPadding(new Insets(15));
+            panel.setMaxWidth(300);
+            panel.setStyle(
+                    "-fx-background-color: white;" +
+                            "-fx-border-color: #4CAF50; -fx-border-width: 3;" + // Bordure VERTE
+                            "-fx-background-radius: 10; -fx-border-radius: 10;" +
+                            "-fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.4), 10, 0, 0, 0);"
+            );
+
+            // Le Message
+            Label lblMsg = new Label(message);
+            lblMsg.setWrapText(true);
+            lblMsg.setStyle("-fx-font-size: 14px; -fx-font-weight: bold; -fx-text-alignment: center; -fx-text-fill: #2E7D32;");
+
+            // Bouton OK pour fermer
+            Button btnOk = new Button("OK");
+            btnOk.setStyle("-fx-background-color: #4CAF50; -fx-text-fill: white; -fx-font-weight: bold; -fx-cursor: hand;");
+            btnOk.setOnAction(e -> clearNotification());
+
+            panel.getChildren().addAll(lblMsg, btnOk);
+            notificationBox.getChildren().add(panel);
+        });
+    }
+
+    public void showErrorPopup(String message) {
+        Platform.runLater(() -> {
+            if (notificationBox == null) return;
+            notificationBox.getChildren().clear();
+
+            // Création du panneau (Style Erreur/Rouge)
+            VBox panel = new VBox(15);
+            panel.setAlignment(Pos.CENTER);
+            panel.setPadding(new Insets(15));
+            panel.setMaxWidth(300);
+            panel.setStyle(
+                    "-fx-background-color: white;" +
+                            "-fx-border-color: #F44336; -fx-border-width: 3;" + // Bordure ROUGE
+                            "-fx-background-radius: 10; -fx-border-radius: 10;" +
+                            "-fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.4), 10, 0, 0, 0);"
+            );
+
+            // Le Message
+            Label lblMsg = new Label(message);
+            lblMsg.setWrapText(true);
+            lblMsg.setStyle("-fx-font-size: 14px; -fx-font-weight: bold; -fx-text-alignment: center; -fx-text-fill: #D32F2F;");
+
+            // Bouton OK pour fermer
+            Button btnOk = new Button("OK");
+            btnOk.setStyle("-fx-background-color: #F44336; -fx-text-fill: white; -fx-font-weight: bold; -fx-cursor: hand;");
+            btnOk.setOnAction(e -> clearNotification());
+
+            panel.getChildren().addAll(lblMsg, btnOk);
+            notificationBox.getChildren().add(panel);
+        });
+    }
+
     public void clearNotification() {
         Platform.runLater(() -> notificationBox.getChildren().clear());
     }

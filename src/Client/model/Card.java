@@ -19,8 +19,6 @@ public class Card {
         this.health = health;
         this.maxHealth = health;
         this.ownerId = ownerId;
-
-        System.out.println("[MODEL] (+) Card Instance Created (Owner: " + ownerId + "): " + this.toString());
     }
 
     // Getters and setters

@@ -23,6 +23,9 @@ public class Hand {
     }
 
     public void addCard(Card card) {
+        if (this.getNbCards() >= MAX_CARDS) {
+            System.out.println("[MODEL] Max cards reached");
+        }
         for (Card existingCard : this.cards) {
             if (existingCard.getId() == card.getId()) {
                 System.out.println("[MODEL] The card " + card.getName() + " is already created");

@@ -89,7 +89,22 @@ public class GameController {
                 break;
             }
 
-            case "FIGHT_REQUESTED":
+            case "TRADE_DENIED" : {
+                handleTradeRefused(json);
+                break;
+            }
+
+            case "FIGHT_REQUEST": {
+
+            }
+
+            case "FIGHT_ACCEPTED": {
+
+            }
+
+            case "FIGHT_DENIED": {
+
+            }
 
 
             case "ERROR":
@@ -179,6 +194,19 @@ public class GameController {
         //add cards
         me.getHand().addCard(hisCardCpy);
         trader.getHand().addCard(myCardCpy);
+
+        if (viewManager.getGameBoardView() != null) {
+            viewManager.getGameBoardView().showSuccessPopup("Échange effectué avec " + traderName + " !");
+        }
+    }
+
+    private void handleTradeRefused(String json) {
+        String refuaserName = jsonReader.getTradeSenderName(json);
+        if(refuaserName == null || refuaserName.isEmpty()) refuaserName = "L'adversaire";
+        String finalName = refuaserName;
+        if (viewManager.getGameBoardView() != null) {
+            viewManager.getGameBoardView().showErrorPopup(finalName + " a refusé votre échange.");
+        }
     }
 
     // --- 4. SEND TO SERVER ---

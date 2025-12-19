@@ -107,12 +107,12 @@ public class jsonReader {
     }
 
     // La carte qu'il demande (VOTRE carte)
-    public int getTradeRequestedCardId(String json) {
+    public int getTradeOfferedCardId(String json) {
         return Integer.parseInt(extractValue(json, "cardId"));
     }
 
     // La carte qu'il propose (SA carte)
-    public int getTradeOfferedCardId(String json) {
+    public int getTradeRequestedCardId(String json) {
         return Integer.parseInt(extractValue(json, "traderCardId"));
     }
 

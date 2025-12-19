@@ -31,17 +31,8 @@ public class jsonBuilder {
         return buildTradeResponse("TRADE_DENY", playerId, traderId, cardId, traderCardId);
     }
 
-    // Helper privé pour éviter de dupliquer le code entre Accept et Deny
     private String buildTradeResponse(String cmd, int playerId, int traderId, int cardId, int traderCardId) {
-        return "{" +
-                "\"cmd\":\"" + cmd + "\"," +
-                "\"data\":{" +
-                "\"playerId\":" + playerId + "," +
-                "\"cardId\":" + cardId + "," +
-                "\"traderId\":" + traderId + "," +
-                "\"traderCardId\":" + traderCardId +
-                "}" +
-                "}";
+        return "{" + "\"cmd\":\"" + cmd + "\"," + "\"data\":{" + "\"playerId\":" + playerId + "," + "\"cardId\":" + cardId + "," + "\"traderId\":" + traderId + "," + "\"traderCardId\":" + traderCardId + "}" + "}";
     }
 
     public String jsonFightAccept(int playerId) {
@@ -50,9 +41,5 @@ public class jsonBuilder {
 
     public String jsonFightDeny(int playerId) {
         return "{\"cmd\":\"FIGHT_DENY\",\"id\":" + playerId + "}";
-    }
-
-    public String jsonError() {
-        return "{\"cmd\":\"ERROR\",\"data\":{\"error\":\"error\"}}";
     }
 }
