@@ -307,14 +307,13 @@ public class GameController {
             int loserId = jsonReader.getFightLoserId(json);
             int winnerCardId = jsonReader.getFightWinnerCardId(json);
             int loserCardId = jsonReader.getFightLoserCardId(json);
-            int damage = jsonReader.getFightDamage(json);
+            int life = jsonReader.getFightWinnerHp(json);
 
             if (winnerId == -1 || loserId == -1) {
                 System.err.println("[ERROR] Incomplete datas");
                 return;
             }
 
-            // 2. Identification des joueurs
             Player winner = resolvePlayer(winnerId);
             Player loser = resolvePlayer(loserId);
 
@@ -323,36 +322,28 @@ public class GameController {
                 return;
             }
 
-            // 3. Identification des cartes
             Card winnerCard = winner.getHand().getCardById(winnerCardId);
             Card loserCard = loser.getHand().getCardById(loserCardId);
 
-            // 4. Application des conséquences (Modèle)
+            int oldHp = winnerCard.getHealth();
 
-            // A. Le perdant perd sa carte
             if (loserCard != null) {
                 System.out.println("[FIGHT] Card destroyed : " + loserCard.getName());
                 loser.getHand().removeCard(loserCard);
             }
 
-            // B. Le gagnant subit des dégâts (si la carte existe encore)
             if (winnerCard != null) {
-                int oldHp = winnerCard.getHealth();
-                int newHp = Math.max(0, oldHp - damage);
+                int newHp = life;
                 winnerCard.setHealth(newHp);
                 System.out.println("[COMBAT] Winner " + winnerCard.getName() + " : " + oldHp + " -> " + newHp + " PV");
 
-                // Si le vainqueur meurt aussi (ex: double KO ou dégâts mortels)
                 if (newHp <= 0) {
                     System.out.println("[COMBAT] The winner is also dead");
                     winner.getHand().removeCard(winnerCard);
                 }
             }
+            notifyObservers();
 
-            // 5. Mise à jour de l'interface
-            notifyObservers(); // Important pour rafraîchir les mains des joueurs
-
-            // 6. Affichage du Popup de résultat
             if (viewManager != null && viewManager.getGameBoardView() != null && !isBot) {
                 int myId = gameState.getCurrentPlayer().getId();
                 String msg;
@@ -360,7 +351,7 @@ public class GameController {
                 if (myId == winnerId) {
                     msg = "VICTOIRE !\n" +
                             "Votre " + (winnerCard != null ? winnerCard.getName() : "Carte") + " a gagné !\n" +
-                            "Elle subit " + damage + " dégâts.\n" +
+                            "Elle subit " + (oldHp - life) + " dégâts.\n" +
                             "L'adversaire a perdu sa carte.";
                     viewManager.getGameBoardView().showSuccessPopup(msg);
                 } else if (myId == loserId) {
@@ -507,13 +498,8 @@ public class GameController {
         System.out.println("[BOT] Generate deck...");
         try {
             //create 4 cards for the bot
-            sendCreateCard("carteBot1", 40, 40, 100);
+            sendCreateCard("carteBot", 40, 40, 100);
             Thread.sleep(100);
-            sendCreateCard("carteBot2", 10, 80, 150);
-            Thread.sleep(100);
-            sendCreateCard("carteBot3", 80, 10, 60);
-            Thread.sleep(100);
-            sendCreateCard("carteBot4", 20, 20, 80);
         } catch (InterruptedException e) {
             e.printStackTrace();
         }

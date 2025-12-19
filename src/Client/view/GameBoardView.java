@@ -299,10 +299,6 @@ public class GameBoardView implements GameObserver {
 
     }
 
-    // =========================================================================
-    // POPUPS & DIALOGUES
-    // =========================================================================
-
     private void openCreateCardDialog() {
         Stage dialog = new Stage();
         dialog.initModality(Modality.APPLICATION_MODAL);
@@ -343,9 +339,16 @@ public class GameBoardView implements GameObserver {
 
                 if ( hp > 100 || ap > 100 || dp > 100) {
                     showAlert("Erreur", "Les statistiques des cartes ne peuvent pas dépasser 100.");
+                    return;
                 }
 
-                controller.sendCreateCard(nom, ap, dp, hp);
+                if ( hp < 0 || ap < 0 || dp < 0) {
+                    showAlert("Erreur", "Les statistiques ne peuvent pas être négatives.");
+                    return;
+                }
+
+                    controller.sendCreateCard(nom, ap, dp, hp);
+
                 dialog.close();
 
             } catch (NumberFormatException ex) {
@@ -624,14 +627,6 @@ public class GameBoardView implements GameObserver {
             notificationBox.getChildren().add(0, panel);
         });
     }
-
-    public void clearNotification() {
-        Platform.runLater(() -> notificationBox.getChildren().clear());
-    }
-
-    // =========================================================================
-    // OBSERVER METHODS
-    // =========================================================================
 
     @Override public void onGameStateChanged(GameState gameState) { Platform.runLater(this::refresh); }
     @Override public void onError(String msg) {

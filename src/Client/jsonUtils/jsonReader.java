@@ -151,29 +151,32 @@ public class jsonReader {
 
 
     //resolving fight
-
     public int getFightWinnerId(String json) {
-        String val = extractValue(json, "winnerId");
+        String val = extractValue(json, "winnerPlayerId");
+        if (val.isEmpty()) val = extractValue(json, "winnerId");
         return Integer.parseInt(val);
     }
 
     public int getFightLoserId(String json) {
-        String val = extractValue(json, "loserId");
+        String val = extractValue(json, "loserPlayerId");
+        if (val.isEmpty()) val = extractValue(json, "loserId");
         return Integer.parseInt(val);
     }
 
     public int getFightWinnerCardId(String json) {
         String val = extractValue(json, "winnerCardId");
+        if (val.isEmpty()) val = extractValue(json, "winner_card_id");
         return Integer.parseInt(val);
     }
 
     public int getFightLoserCardId(String json) {
         String val = extractValue(json, "loserCardId");
+        if (val.isEmpty()) val = extractValue(json, "loser_card_id");
         return Integer.parseInt(val);
     }
 
-    public int getFightDamage(String json) {
-        String val = extractValue(json, "damage");
+    public int getFightWinnerHp(String json) {
+        String val = extractValue(json, "winnerCardHp");
         return Integer.parseInt(val);
     }
 
