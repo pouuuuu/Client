@@ -84,6 +84,8 @@ public class ServerConnection {
                     System.err.println("[NETWORK] Connection lost.");
                     controller.onError("Connection lost with server.");
                 }
+            } catch (InterruptedException e) {
+                throw new RuntimeException(e);
             } finally {
                 disconnect();
             }
@@ -119,7 +121,15 @@ public class ServerConnection {
     }
 
     public void sendFightResponse(boolean accepted, int requesterId, int myCardId, int enemyCardId) {
-        //sendJson(jsonBuilder.jsonFightResponse(currentPlayerId, accepted, requesterId, myCardId, enemyCardId));
+        String json;
+
+        if (accepted) {
+            json = jsonBuilder.jsonFightAccept(currentPlayerId);
+        } else {
+            json = jsonBuilder.jsonFightDeny(currentPlayerId);
+        }
+
+        sendJson(json);
     }
 
     private void sendJson(String json) {

@@ -11,7 +11,7 @@ public class Card {
     private int maxHealth;
     private int ownerId;
 
-    public Card(int id, String name, int attack, int defense, int health, int ownerId) {
+    public Card(int id, String name, int attack, int defense, int health, int maxHealth, int ownerId) {
         this.id = id;
         this.name = name;
         this.attack = attack;

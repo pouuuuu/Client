@@ -59,10 +59,11 @@ public class jsonReader {
             int hp = Integer.parseInt(extractValue(json, "HP"));
             int ap = Integer.parseInt(extractValue(json, "AP"));
             int dp = Integer.parseInt(extractValue(json, "DP"));
+            int maxHp = Integer.parseInt(extractValue(json, "max_HP"));
             int ownerId = Integer.parseInt(extractValue(json, "user_id"));
 
             //Retourner la carte avec les bonnes infos
-            return new Card(cardId, name, ap, dp, hp, ownerId);
+            return new Card(cardId, name, ap, dp, hp, maxHp, ownerId);
 
         } catch (Exception e) {
             System.err.println("[JSON_Reader] Error parsing card: " + e.getMessage());
@@ -132,24 +133,18 @@ public class jsonReader {
         return Integer.parseInt(val);
     }
 
-
-
-    public String getFightDefenderId(String json) {
-        return extractValue(json, "defenderId");
-    }
-
     public int getFightAttackerId(String json) {
-        String val = extractValue(json, "attackerId");
+        String val = extractValue(json, "fromPlayerId");
         return Integer.parseInt(val);
     }
 
     public int getFightDefenderCardId(String json) {
-        String val = extractValue(json, "defenderCardId");
+        String val = extractValue(json, "opponentCardId");
         return Integer.parseInt(val);
     }
 
     public int getFightAttackerCardId(String json) {
-        String val = extractValue(json, "attackerCardId");
+        String val = extractValue(json, "cardId");
         return Integer.parseInt(val);
     }
 

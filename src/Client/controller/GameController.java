@@ -34,15 +34,22 @@ public class GameController {
         this.observers = new ArrayList<>();
         this.jsonReader = new jsonReader();
 
-        // Si c'est un bot, on ne lance pas l'interface graphique (ViewManager)
-        if (!isBot && stage != null) {
+        if (stage != null) {
             this.viewManager = new ViewManager(stage, this);
             this.viewManager.showLoginView();
             stage.setMaximized(true);
+
+            if (isBot) {
+                stage.setTitle("BOT VIEW - " + (this.pendingPlayerName != null ? this.pendingPlayerName : "Bot"));
+            }
         }
     }
 
-    // --- 1. CONNECTION ---
+    public boolean isBot() {
+        return isBot;
+    }
+
+    //init the serv connection
     public boolean connect(String playerName) {
         if (playerName == null || playerName.trim().isEmpty()) return false;
         this.pendingPlayerName = playerName;
@@ -50,20 +57,20 @@ public class GameController {
         return this.serverConnection.connect(playerName);
     }
 
-    public void disconnect() {
-        if (serverConnection != null) serverConnection.disconnect();
-        viewManager.setConnected(false);
-    }
-
-    // --- 2. PROCESS MESSAGES (Delegation to JSON_Reader) ---
-
-    public void processServerMessage(String json) {
+    //process json messages from server
+    public void processServerMessage(String json) throws InterruptedException {
         String cmd = jsonReader.getCommand(json);
 
         switch (cmd) {
             case "AUTH_OK":
                 int id = jsonReader.getAuthId(json);
+
+                if (serverConnection != null) {
+                    serverConnection.setPlayerId(id);
+                }
+
                 handleConnection(id);
+
                 if (isBot) {
                     generateStarterDeck();
                 }
@@ -102,27 +109,17 @@ public class GameController {
                 break;
             }
 
-            case "TRADE_DENIED" : {
-                handleTradeDenied(json);
-                break;
-            }
-
             case "TRADE_RESPONSE_SENT", "TRADE_COMPLETE": {
                 break;
             }
 
             case "FIGHT_REQUEST": {
-                //handleFightRequest(json);
+                handleFightRequest(json);
                 break;
             }
 
-            case "FIGHT_ACCEPTED": {
+            case "FIGHT_RESULT": {
                 handleFightResult(json);
-                break;
-            }
-
-            case "FIGHT_DENIED": {
-                //handleFightDenied(json);
                 break;
             }
 
@@ -136,8 +133,7 @@ public class GameController {
         }
     }
 
-    // --- 3. ACTION HANDLERS ---
-
+    //handlers to make the actions
     private void handleConnection(int playerId) {
         javafx.application.Platform.runLater(() -> {
             System.out.println("[CTRL] Auth success. My ID: " + playerId);
@@ -170,12 +166,13 @@ public class GameController {
         try {
             System.out.println("[CTRL] Trade Request...");
 
-            // 1. Lecture des données
             int traderId = jsonReader.getTradeSenderId(json);
             String traderName = jsonReader.getTradeSenderName(json);
             int myCardId = jsonReader.getTradeRequestedCardId(json);
             int traderCardId = jsonReader.getTradeOfferedCardId(json);
 
+
+            //if its a bot, its auto done without confirmation
             if (isBot) {
                 System.out.println("[BOT] Auto-accepting trade from ID " + traderId);
                 serverConnection.sendTradeResponse(true, traderId, myCardId, traderCardId);
@@ -247,68 +244,140 @@ public class GameController {
         }
     }
 
-    private void handleTradeDenied(String json) {
-        String refuaserName = jsonReader.getTradeSenderName(json);
-        if(refuaserName == null || refuaserName.isEmpty()) refuaserName = "L'adversaire";
-        String finalName = refuaserName;
-        if (viewManager.getGameBoardView() != null) {
-            viewManager.getGameBoardView().showErrorPopup(finalName + " a refusé votre échange.");
+    //when u receive a fight
+    private void handleFightRequest(String json) {
+        try {
+            System.out.println("[CTRL] Fight request received");
+
+            int attackerId = jsonReader.getFightAttackerId(json);
+            int myCardId = jsonReader.getFightDefenderCardId(json);
+            int attackerCardId = jsonReader.getFightAttackerCardId(json);
+
+            Player attacker = gameState.getPlayerById(attackerId);
+            String attackerName = attacker.getName();
+
+            //get my card
+            Card myCard = null;
+            if (gameState.getCurrentPlayer() != null) {
+                myCard = gameState.getCurrentPlayer().getHand().getCardById(myCardId);
+            }
+
+            String myCardName = myCard.getName();
+
+            //get opponent card
+            Card attackerCard = null;
+            if (attacker != null) {
+                attackerCard = attacker.getHand().getCardById(attackerCardId);
+            }
+            String attackerCardName = (attackerCard.getName());
+
+            //auto done if its a bot
+            if (isBot) {
+                System.out.println("[BOT] Accepting fight against " + attackerName);
+                serverConnection.sendFightResponse(true, attackerId, myCardId, attackerCardId);
+                return;
+            }
+
+            String msg = "COMBAT\n" +
+                    attackerName + " attaque votre " + myCardName + "\n" +
+                    "avec son " + attackerCardName + " !";
+
+            //send to ui
+            if (viewManager != null && viewManager.getGameBoardView() != null) {
+                viewManager.getGameBoardView().showFightPopup(
+                        msg,
+                        () -> serverConnection.sendFightResponse(true, attackerId, myCardId, attackerCardId),
+                        () -> serverConnection.sendFightResponse(false, attackerId, myCardId, attackerCardId)
+                );
+            }
+
+        } catch (Exception e) {
+            System.err.println("[CTRL] Error reading fight request : " + e.getMessage());
+            e.printStackTrace();
         }
     }
 
+    //fight result
     private void handleFightResult(String json) {
-        int winnerId = jsonReader.getFightWinnerId(json);
-        int loserId = jsonReader.getFightLoserId(json);
-        int winnerCardId = jsonReader.getFightWinnerCardId(json);
-        int loserCardId = jsonReader.getFightLoserCardId(json);
-        int damage = jsonReader.getFightDamage(json);
+        try {
+            System.out.println("[DEBUG] fight result received : " + json);
 
-        System.out.println("[CTRL] Fight result : winner ID " + winnerId + ", looser ID " + loserId);
-        
-        Player winner = resolvePlayer(winnerId);
-        Player loser = resolvePlayer(loserId);
+            // 1. Extraction sécurisée
+            int winnerId = jsonReader.getFightWinnerId(json);
+            int loserId = jsonReader.getFightLoserId(json);
+            int winnerCardId = jsonReader.getFightWinnerCardId(json);
+            int loserCardId = jsonReader.getFightLoserCardId(json);
+            int damage = jsonReader.getFightDamage(json);
 
-        if (winner == null || loser == null) {
-            System.err.println("[FIGHT ERROR] Can't find players W:" + winnerId + ", L:" + loserId);
-            return;
-        }
-        
-        Card winnerCard = winner.getHand().getCardById(winnerCardId);
-        Card loserCard = loser.getHand().getCardById(loserCardId);
-        
-        //destroy card
-        if (loserCard != null) {
-            System.out.println("[FIGHT] Destroying card : " + loserCard.getName());
-            loser.getHand().removeCard(loserCard);
-        } else {
-            System.err.println("[FIGHT WARN] Can't find looser card (ID " + loserCardId + ")");
-        }
-
-        //taking damages
-        if (winnerCard != null) {
-            int oldHp = winnerCard.getHealth();
-            int newHp = Math.max(0, oldHp - damage);
-            winnerCard.setHealth(newHp);
-            System.out.println("[FIGHT] Winner " + winnerCard.getName() + " : " + oldHp + " -> " + newHp + " PV");
-        } else {
-            System.err.println("[FIGHT WARN] Can't find winner card (ID " + winnerCardId + ")");
-        }
-
-        notifyObservers();
-
-        if (viewManager != null && viewManager.getGameBoardView() != null) {
-            int myId = gameState.getCurrentPlayer().getId();
-
-            if (myId == winnerId) {
-                String msg = "VICTOIRE !\n" +
-                        "Votre " + winnerCard.getName() + " a écrasé l'adversaire.\nElle subit " + damage + " dégâts.";
-                viewManager.getGameBoardView().showSuccessPopup(msg);
-
-            } else if (myId == loserId) {
-                String msg = "DÉFAITE\n" +
-                        "Votre " + loserCard.getName() + " a été détruite par " + winner.getName() + ".\nElle est retirée de votre main.";
-                viewManager.getGameBoardView().showErrorPopup(msg);
+            if (winnerId == -1 || loserId == -1) {
+                System.err.println("[ERROR] Incomplete datas");
+                return;
             }
+
+            // 2. Identification des joueurs
+            Player winner = resolvePlayer(winnerId);
+            Player loser = resolvePlayer(loserId);
+
+            if (winner == null || loser == null) {
+                System.err.println("[ERROR] Missing players (W:" + winnerId + ", L:" + loserId + ")");
+                return;
+            }
+
+            // 3. Identification des cartes
+            Card winnerCard = winner.getHand().getCardById(winnerCardId);
+            Card loserCard = loser.getHand().getCardById(loserCardId);
+
+            // 4. Application des conséquences (Modèle)
+
+            // A. Le perdant perd sa carte
+            if (loserCard != null) {
+                System.out.println("[FIGHT] Card destroyed : " + loserCard.getName());
+                loser.getHand().removeCard(loserCard);
+            }
+
+            // B. Le gagnant subit des dégâts (si la carte existe encore)
+            if (winnerCard != null) {
+                int oldHp = winnerCard.getHealth();
+                int newHp = Math.max(0, oldHp - damage);
+                winnerCard.setHealth(newHp);
+                System.out.println("[COMBAT] Winner " + winnerCard.getName() + " : " + oldHp + " -> " + newHp + " PV");
+
+                // Si le vainqueur meurt aussi (ex: double KO ou dégâts mortels)
+                if (newHp <= 0) {
+                    System.out.println("[COMBAT] The winner is also dead");
+                    winner.getHand().removeCard(winnerCard);
+                }
+            }
+
+            // 5. Mise à jour de l'interface
+            notifyObservers(); // Important pour rafraîchir les mains des joueurs
+
+            // 6. Affichage du Popup de résultat
+            if (viewManager != null && viewManager.getGameBoardView() != null && !isBot) {
+                int myId = gameState.getCurrentPlayer().getId();
+                String msg;
+
+                if (myId == winnerId) {
+                    msg = "VICTOIRE !\n" +
+                            "Votre " + (winnerCard != null ? winnerCard.getName() : "Carte") + " a gagné !\n" +
+                            "Elle subit " + damage + " dégâts.\n" +
+                            "L'adversaire a perdu sa carte.";
+                    viewManager.getGameBoardView().showSuccessPopup(msg);
+                } else if (myId == loserId) {
+                    msg = "DÉFAITE...\n" +
+                            "Votre " + (loserCard != null ? loserCard.getName() : "Carte") + " a été détruite\n" +
+                            "par " + winner.getName() + ".";
+                    viewManager.getGameBoardView().showErrorPopup(msg);
+                } else {
+                    // Spectateur (optionnel)
+                    msg = "COMBAT TERMINÉ\n" + winner.getName() + " a vaincu " + loser.getName();
+                    viewManager.getGameBoardView().showInfoPopup(msg, "#607D8B");
+                }
+            }
+
+        } catch (Exception e) {
+            System.err.println("[CTRL] Erreur dans handleFightResult: " + e.getMessage());
+            e.printStackTrace();
         }
     }
 
@@ -434,13 +503,20 @@ public class GameController {
         notifyObservers();
     }
 
-    private void generateStarterDeck() {
+    private void generateStarterDeck() throws InterruptedException {
         System.out.println("[BOT] Generate deck...");
-        //create 4 cards for the bot
-        sendCreateCard("carteBot1", 40, 40, 100);
-        sendCreateCard("carteBot2", 10, 80, 150);
-        sendCreateCard("carteBot3", 80, 10, 60);
-        sendCreateCard("carteBot4", 20, 20, 80);
+        try {
+            //create 4 cards for the bot
+            sendCreateCard("carteBot1", 40, 40, 100);
+            Thread.sleep(100);
+            sendCreateCard("carteBot2", 10, 80, 150);
+            Thread.sleep(100);
+            sendCreateCard("carteBot3", 80, 10, 60);
+            Thread.sleep(100);
+            sendCreateCard("carteBot4", 20, 20, 80);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
     }
 
     // Debug

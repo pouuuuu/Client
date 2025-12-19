@@ -457,6 +457,13 @@ public class GameBoardView implements GameObserver {
     }
 
     public void showTradePopup(String message, Runnable onAccept, Runnable onDeny) {
+
+        if (controller.isBot()) {
+            System.out.println("[BOT] Trade detected");
+            onAccept.run();
+            return;
+        }
+
         Platform.runLater(() -> {
             if (notificationBox == null) return;
 
@@ -500,6 +507,13 @@ public class GameBoardView implements GameObserver {
         });
     }
     public void showFightPopup(String message, Runnable onAccept, Runnable onDeny) {
+
+        if (controller.isBot()) {
+            System.out.println("[BOT] Fight detected");
+            onAccept.run();
+            return;
+        }
+
         Platform.runLater(() -> {
             if (notificationBox == null) return;
 

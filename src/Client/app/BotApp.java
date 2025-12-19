@@ -12,11 +12,11 @@ public class BotApp extends Application {
     public void start(Stage stage) {
         Parameters params = getParameters();
         List<String> list = params.getRaw();
-        String botName = list.get(0);
 
-        GameController botController = new GameController(null, true);
+        String botName = list.isEmpty() ? "Bot" : list.get(0);
 
-        // Connexion automatique
+        GameController botController = new GameController(stage, true);
+
         System.out.println("Starting bot : " + botName);
         boolean success = botController.connect(botName);
 
