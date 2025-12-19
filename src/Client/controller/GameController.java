@@ -107,11 +107,7 @@ public class GameController {
                 break;
             }
 
-            case "TRADE_RESPONSE_SENT": {
-                break;
-            }
-
-            case "TRADE_COMPLETE": {
+            case "TRADE_RESPONSE_SENT", "TRADE_COMPLETE": {
                 break;
             }
 
@@ -121,17 +117,12 @@ public class GameController {
             }
 
             case "FIGHT_ACCEPTED": {
-                //handleFight(json);
+                handleFightResult(json);
                 break;
             }
 
             case "FIGHT_DENIED": {
                 //handleFightDenied(json);
-                break;
-            }
-
-            case "FIGHT_RESULT": {
-                //handleFightResult(json);
                 break;
             }
 
@@ -177,7 +168,7 @@ public class GameController {
 
     private void handleTradeRequest(String json) {
         try {
-            System.out.println("[CTRL] Trade Request..."); // Log de debug
+            System.out.println("[CTRL] Trade Request...");
 
             // 1. Lecture des données
             int traderId = jsonReader.getTradeSenderId(json);
@@ -190,12 +181,12 @@ public class GameController {
                 serverConnection.sendTradeResponse(true, traderId, myCardId, traderCardId);
             }
 
-            // 2. Construction du message
+            //text
             String msg = "ECHANGE PROPOSÉ par " + traderName + "\n" +
-                    "Il te donne" + gameState.getPlayerById(traderId).getHand().getCardById(traderCardId).getName() + " (#" + traderCardId + ")\n" +
+                    "Il te donne " + gameState.getPlayerById(traderId).getHand().getCardById(traderCardId).getName() + " (#" + traderCardId + ")\n" +
                     "Contre " + gameState.getCurrentPlayer().getHand().getCardById(myCardId).getName() + " (#" + myCardId + ")";
 
-            // 3. Appel UI
+            //ui call
             if (viewManager.getGameBoardView() != null) {
                 viewManager.getGameBoardView().showTradePopup(
                         msg,
@@ -211,12 +202,12 @@ public class GameController {
     private void handleTrade(String json) {
         int id1 = jsonReader.getTradePlayerId1(json);
         int id2 = jsonReader.getTradePlayerId2(json);
-
         int cardId1 = jsonReader.getTradeCardId1(json);
         int cardId2 = jsonReader.getTradeCardId2(json);
 
         System.out.println("[CTRL] Trade between:" + id1 + " et ID:" + id2 +" done");
 
+        //player affectation
         Player p1 = resolvePlayer(id1);
         Player p2 = resolvePlayer(id2);
 
@@ -225,6 +216,7 @@ public class GameController {
             return;
         }
 
+        //get cards
         Card c1 = p1.getHand().getCardById(cardId1);
         Card c2 = p2.getHand().getCardById(cardId2);
 
@@ -233,6 +225,7 @@ public class GameController {
             return;
         }
 
+        //trade logic
         p1.getHand().removeCard(c1);
         p2.getHand().removeCard(c2);
         c1.setOwnerId(p2.getId());
@@ -244,7 +237,7 @@ public class GameController {
 
         notifyObservers();
 
-        // 6. Affichage Popup (Seulement si je suis concerné)
+        //popup, go to view
         int myId = gameState.getCurrentPlayer().getId();
         if (myId == id1 || myId == id2) {
             String otherName = (myId == id1) ? p2.getName() : p1.getName();
@@ -252,13 +245,6 @@ public class GameController {
                 viewManager.getGameBoardView().showSuccessPopup("Échange effectué avec " + otherName + " !");
             }
         }
-    }
-
-    private Player resolvePlayer(int id) {
-        if (gameState.getCurrentPlayer() != null && gameState.getCurrentPlayer().getId() == id) {
-            return gameState.getCurrentPlayer();
-        }
-        return gameState.getPlayerById(id);
     }
 
     private void handleTradeDenied(String json) {
@@ -270,15 +256,68 @@ public class GameController {
         }
     }
 
-    private void handleFightRequest(String json) {
+    private void handleFightResult(String json) {
+        int winnerId = jsonReader.getFightWinnerId(json);
+        int loserId = jsonReader.getFightLoserId(json);
+        int winnerCardId = jsonReader.getFightWinnerCardId(json);
+        int loserCardId = jsonReader.getFightLoserCardId(json);
+        int damage = jsonReader.getFightDamage(json);
 
-        if (isBot) {
-            System.out.println("[BOT] Auto-accepting fight request.");
-            serverConnection.sendFightResponse(true);
+        System.out.println("[CTRL] Fight result : winner ID " + winnerId + ", looser ID " + loserId);
+        
+        Player winner = resolvePlayer(winnerId);
+        Player loser = resolvePlayer(loserId);
+
+        if (winner == null || loser == null) {
+            System.err.println("[FIGHT ERROR] Can't find players W:" + winnerId + ", L:" + loserId);
             return;
+        }
+        
+        Card winnerCard = winner.getHand().getCardById(winnerCardId);
+        Card loserCard = loser.getHand().getCardById(loserCardId);
+        
+        //destroy card
+        if (loserCard != null) {
+            System.out.println("[FIGHT] Destroying card : " + loserCard.getName());
+            loser.getHand().removeCard(loserCard);
+        } else {
+            System.err.println("[FIGHT WARN] Can't find looser card (ID " + loserCardId + ")");
+        }
+
+        //taking damages
+        if (winnerCard != null) {
+            int oldHp = winnerCard.getHealth();
+            int newHp = Math.max(0, oldHp - damage);
+            winnerCard.setHealth(newHp);
+            System.out.println("[FIGHT] Winner " + winnerCard.getName() + " : " + oldHp + " -> " + newHp + " PV");
+        } else {
+            System.err.println("[FIGHT WARN] Can't find winner card (ID " + winnerCardId + ")");
+        }
+
+        notifyObservers();
+
+        if (viewManager != null && viewManager.getGameBoardView() != null) {
+            int myId = gameState.getCurrentPlayer().getId();
+
+            if (myId == winnerId) {
+                String msg = "VICTOIRE !\n" +
+                        "Votre " + winnerCard.getName() + " a écrasé l'adversaire.\nElle subit " + damage + " dégâts.";
+                viewManager.getGameBoardView().showSuccessPopup(msg);
+
+            } else if (myId == loserId) {
+                String msg = "DÉFAITE\n" +
+                        "Votre " + loserCard.getName() + " a été détruite par " + winner.getName() + ".\nElle est retirée de votre main.";
+                viewManager.getGameBoardView().showErrorPopup(msg);
+            }
         }
     }
 
+    private Player resolvePlayer(int id) {
+        if (gameState.getCurrentPlayer() != null && gameState.getCurrentPlayer().getId() == id) {
+            return gameState.getCurrentPlayer();
+        }
+        return gameState.getPlayerById(id);
+    }
 
     // --- 4. SEND TO SERVER ---
 
@@ -396,9 +435,8 @@ public class GameController {
     }
 
     private void generateStarterDeck() {
-        System.out.println("[BOT] Génération du deck de base...");
-        // Crée 4 cartes automatiquement avec des stats aléatoires ou fixes
-        // (Nom, Atk, Def, HP)
+        System.out.println("[BOT] Generate deck...");
+        //create 4 cards for the bot
         sendCreateCard("carteBot1", 40, 40, 100);
         sendCreateCard("carteBot2", 10, 80, 150);
         sendCreateCard("carteBot3", 80, 10, 60);

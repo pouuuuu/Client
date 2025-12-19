@@ -20,23 +20,22 @@ public class GameBoardView implements GameObserver {
     private GameController controller;
     private BorderPane mainLayout;
 
-    // Zones d'affichage
+    //containers
     private GridPane myHandContainer;
     private GridPane opponentHandContainer;
     private VBox centerContainer;
     private VBox notificationBox;
 
-    // État de la sélection locale (pour l'UI uniquement)
+    //viewmodels for cards and players
+    //TODO : make it pass through controller
     private CardViewModel selectedMyCard = null;
     private CardViewModel selectedOpponentCard = null;
     private PlayerViewModel selectedOpponent = null;
 
-    // Labels d'info
     private Label lblMySelection;
     private Label lblOppSelection;
     private Label lblOppCardSelection;
 
-    // Boutons d'action
     private Button btnCombat;
     private Button btnTrade;
 
@@ -49,29 +48,27 @@ public class GameBoardView implements GameObserver {
         mainLayout = new BorderPane();
         mainLayout.setPadding(new Insets(10));
 
-        // --- EN-TÊTE ---
         Label title = new Label("PLATEAU DE JEU");
         title.setStyle("-fx-font-size: 28pt; -fx-font-weight: bold; -fx-text-fill: #006064; -fx-effect: dropshadow(gaussian, rgba(255,255,255,0.5), 0, 0, 0, 1);");
         BorderPane.setAlignment(title, Pos.CENTER);
         mainLayout.setTop(title);
 
-        // --- CORPS (3 Colonnes) ---
         HBox body = new HBox(20);
         body.setAlignment(Pos.CENTER);
         body.setPadding(new Insets(20));
         HBox.setHgrow(body, Priority.ALWAYS);
 
-        // 1. GAUCHE : Ma Main
+        //my hand
         VBox leftSection = createMyHandSection();
         HBox.setHgrow(leftSection, Priority.ALWAYS);
         leftSection.setPrefWidth(450);
 
-        // 2. CENTRE : Joueurs & Actions
+        //actions
         VBox centerSection = createCenterSection();
         centerSection.setPrefWidth(350);
         centerSection.setMinWidth(300);
 
-        // 3. DROITE : Main Adversaire
+        //other players hand
         VBox rightSection = createOpponentHandSection();
         HBox.setHgrow(rightSection, Priority.ALWAYS);
         rightSection.setPrefWidth(450);
@@ -79,16 +76,13 @@ public class GameBoardView implements GameObserver {
         body.getChildren().addAll(leftSection, centerSection, rightSection);
         mainLayout.setCenter(body);
 
-        // Initialisation de l'affichage
+        //init view
         refresh();
 
         return mainLayout;
     }
 
-    // =========================================================================
-    // SECTION 1 : MA MAIN (GAUCHE)
-    // =========================================================================
-
+    //my hand
     private VBox createMyHandSection() {
         VBox section = new VBox(15);
         section.setAlignment(Pos.TOP_CENTER);
@@ -102,7 +96,7 @@ public class GameBoardView implements GameObserver {
         btnCreate.setStyle("-fx-background-color: #4CAF50; -fx-text-fill: white; -fx-font-weight: bold; -fx-cursor: hand;");
         btnCreate.setOnAction(e -> openCreateCardDialog());
 
-        // Grille pour les cartes (3 colonnes)
+        //for card view
         myHandContainer = new GridPane();
         myHandContainer.setHgap(10);
         myHandContainer.setVgap(10);
@@ -117,10 +111,7 @@ public class GameBoardView implements GameObserver {
         return section;
     }
 
-    // =========================================================================
-    // SECTION 2 : CENTRE (JOUEURS ET ACTIONS)
-    // =========================================================================
-
+    //actions
     private VBox createCenterSection() {
         centerContainer = new VBox(20);
         centerContainer.setAlignment(Pos.TOP_CENTER);
@@ -130,14 +121,14 @@ public class GameBoardView implements GameObserver {
         Label title = new Label("JOUEURS CONNECTÉS");
         title.setStyle("-fx-font-size: 16pt; -fx-font-weight: bold; -fx-text-fill: #FF6F00;");
 
-        // Liste des joueurs (sera remplie dynamiquement)
+        //playerlist
         VBox playersList = new VBox(10);
-        playersList.setId("playersList"); // Pour le retrouver lors du refresh
+        playersList.setId("playersList");
         playersList.setAlignment(Pos.CENTER);
 
         Separator sep = new Separator();
 
-        // Zone de sélection
+        //selection zone
         VBox selectionBox = new VBox(10);
         selectionBox.setAlignment(Pos.CENTER);
         selectionBox.setStyle("-fx-background-color: rgba(255,255,255,0.3); -fx-padding: 10; -fx-background-radius: 10;");
@@ -179,10 +170,7 @@ public class GameBoardView implements GameObserver {
         return centerContainer;
     }
 
-    // =========================================================================
-    // SECTION 3 : MAIN ADVERSAIRE (DROITE)
-    // =========================================================================
-
+    //other player hand
     private VBox createOpponentHandSection() {
         VBox section = new VBox(15);
         section.setAlignment(Pos.TOP_CENTER);
@@ -209,12 +197,7 @@ public class GameBoardView implements GameObserver {
         return section;
     }
 
-    // =========================================================================
-    // LOGIQUE DE MISE A JOUR (REFRESH)
-    // =========================================================================
-
-    // Dans src/view/GameBoardView.java
-
+    //update datas
     public void refresh() {
         if (myHandContainer == null || opponentHandContainer == null) {
             return;
@@ -429,6 +412,20 @@ public class GameBoardView implements GameObserver {
         dialog.show();
     }
 
+    public void showInfoPopup(String msg, String colorHex) {
+        Platform.runLater(() -> {
+            Label lbl = new Label(msg);
+            lbl.setWrapText(true);
+            lbl.setStyle("-fx-background-color: " + colorHex + "; -fx-text-fill: white; -fx-padding: 10; -fx-background-radius: 5;");
+            lbl.setMaxWidth(300);
+
+            // Auto-destruction au clic
+            lbl.setOnMouseClicked(e -> notificationBox.getChildren().remove(lbl));
+
+            notificationBox.getChildren().add(0, lbl);
+        });
+    }
+
     public void showTradePopup(String message, Runnable onAccept, Runnable onDeny) {
         Platform.runLater(() -> {
             System.out.println("[VIEW] Display trade popup");
@@ -436,7 +433,6 @@ public class GameBoardView implements GameObserver {
                 System.err.println("[VIEW] ERREOR: notificationBox is null");
                 return;
             }
-            notificationBox.getChildren().clear();
 
             // Création du panneau visuel
             VBox panel = new VBox(15);
@@ -457,18 +453,19 @@ public class GameBoardView implements GameObserver {
             lblMsg.setWrapText(true);
             lblMsg.setStyle("-fx-font-size: 14px; -fx-font-weight: bold; -fx-text-alignment: center;");
 
-            // Les Boutons
-            Button btnYes = new Button("✔ OUI");
+            Button btnYes = new Button("OUI");
             btnYes.setStyle("-fx-background-color: #4CAF50; -fx-text-fill: white; -fx-font-weight: bold; -fx-cursor: hand;");
+
             btnYes.setOnAction(e -> {
-                clearNotification();
+
                 onAccept.run();
             });
 
-            Button btnNo = new Button("✖ NON");
+            Button btnNo = new Button("NON");
             btnNo.setStyle("-fx-background-color: #F44336; -fx-text-fill: white; -fx-font-weight: bold; -fx-cursor: hand;");
+
             btnNo.setOnAction(e -> {
-                clearNotification();
+
                 onDeny.run();
             });
 
@@ -477,6 +474,56 @@ public class GameBoardView implements GameObserver {
 
             panel.getChildren().addAll(lblMsg, buttons);
             notificationBox.getChildren().add(panel);
+        });
+    }
+
+    // Dans GameBoardView.java
+
+    public void showFightPopup(String message, Runnable onAccept, Runnable onDeny) {
+        Platform.runLater(() -> {
+            if (notificationBox == null) return;
+
+            VBox panel = new VBox(15);
+            panel.setAlignment(Pos.CENTER);
+            panel.setPadding(new Insets(15));
+            panel.setMaxWidth(320);
+
+            panel.setStyle(
+                    "-fx-background-color: #2c0b0e;" + // Fond sombre rougeatre
+                            "-fx-border-color: #FF0000; -fx-border-width: 3;" + // Bordure Rouge vif
+                            "-fx-background-radius: 10; -fx-border-radius: 10;" +
+                            "-fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.6), 15, 0, 0, 0);"
+            );
+
+            // Le Message
+            Label lblMsg = new Label(message);
+            lblMsg.setWrapText(true);
+            // Texte blanc et gras
+            lblMsg.setStyle("-fx-font-size: 14px; -fx-font-weight: bold; -fx-text-alignment: center; -fx-text-fill: white;");
+
+            // Bouton COMBATTRE
+            Button btnFight = new Button("⚔️ SE BATTRE");
+            btnFight.setStyle("-fx-background-color: #d32f2f; -fx-text-fill: white; -fx-font-weight: bold; -fx-cursor: hand; -fx-font-size: 13px;");
+            btnFight.setOnAction(e -> {
+                notificationBox.getChildren().remove(panel); // On enlève juste ce popup
+                onAccept.run();
+            });
+
+            // Bouton FUIR
+            Button btnFlee = new Button("FUIR");
+            btnFlee.setStyle("-fx-background-color: #757575; -fx-text-fill: white; -fx-font-weight: bold; -fx-cursor: hand;");
+            btnFlee.setOnAction(e -> {
+                notificationBox.getChildren().remove(panel); // On enlève juste ce popup
+                onDeny.run();
+            });
+
+            HBox buttons = new HBox(15, btnFight, btnFlee);
+            buttons.setAlignment(Pos.CENTER);
+
+            panel.getChildren().addAll(lblMsg, buttons);
+
+            // Ajout en haut de la pile
+            notificationBox.getChildren().add(0, panel);
         });
     }
 

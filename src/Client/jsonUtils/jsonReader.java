@@ -112,40 +112,84 @@ public class jsonReader {
         return Integer.parseInt(extractValue(json, "traderCardId"));
     }
 
-    //private functions
+    public int getTradePlayerId1(String json) {
+        String val = extractValue(json, "playerId");
+        return Integer.parseInt(val);
+    }
+
+    public int getTradePlayerId2(String json) {
+        String val = extractValue(json, "traderId");
+        return Integer.parseInt(val);
+    }
+
+    public int getTradeCardId1(String json) {
+        String val = extractValue(json, "yourCardId");
+        return Integer.parseInt(val);
+    }
+
+    public int getTradeCardId2(String json) {
+        String val = extractValue(json, "traderCardId");
+        return Integer.parseInt(val);
+    }
+
+
+
+    public String getFightDefenderId(String json) {
+        return extractValue(json, "defenderId");
+    }
+
+    public int getFightAttackerId(String json) {
+        String val = extractValue(json, "attackerId");
+        return Integer.parseInt(val);
+    }
+
+    public int getFightDefenderCardId(String json) {
+        String val = extractValue(json, "defenderCardId");
+        return Integer.parseInt(val);
+    }
+
+    public int getFightAttackerCardId(String json) {
+        String val = extractValue(json, "attackerCardId");
+        return Integer.parseInt(val);
+    }
+
+
+
+    //resolving fight
+
+    public int getFightWinnerId(String json) {
+        String val = extractValue(json, "winnerId");
+        return Integer.parseInt(val);
+    }
+
+    public int getFightLoserId(String json) {
+        String val = extractValue(json, "loserId");
+        return Integer.parseInt(val);
+    }
+
+    public int getFightWinnerCardId(String json) {
+        String val = extractValue(json, "winnerCardId");
+        return Integer.parseInt(val);
+    }
+
+    public int getFightLoserCardId(String json) {
+        String val = extractValue(json, "loserCardId");
+        return Integer.parseInt(val);
+    }
+
+    public int getFightDamage(String json) {
+        String val = extractValue(json, "damage");
+        return Integer.parseInt(val);
+    }
+
+
+    //utils
 
     private String extractValue(String json, String key) {
         //regex to find key and value
         Pattern p = Pattern.compile("\"" + key + "\"\\s*:\\s*\"?([^,\"}]+)\"?");
         Matcher m = p.matcher(json);
         return m.find() ? m.group(1) : "";
-    }
-
-    public int getTradePlayerId1(String json) {
-        // ID de celui qui a accepté (ou le premier ID du paquet)
-        String val = extractValue(json, "playerId");
-        return val.isEmpty() ? -1 : Integer.parseInt(val);
-    }
-
-    public int getTradePlayerId2(String json) {
-        // ID de celui qui a proposé (traderId)
-        String val = extractValue(json, "traderId");
-        return val.isEmpty() ? -1 : Integer.parseInt(val);
-    }
-
-    public int getTradeCardId1(String json) {
-        String val = extractValue(json, "cardId");
-        if (val.isEmpty()) {
-            val = extractValue(json, "yourCardId");
-        }
-
-        return val.isEmpty() ? -1 : Integer.parseInt(val);
-    }
-
-    public int getTradeCardId2(String json) {
-        // Carte appartenant à PlayerId2 (traderCardId)
-        String val = extractValue(json, "traderCardId");
-        return val.isEmpty() ? -1 : Integer.parseInt(val);
     }
 
     // split obj1},{obj2
@@ -174,9 +218,7 @@ public class jsonReader {
         int startBracket = json.indexOf("[", keyIndex);
         if (startBracket == -1) return "";
 
-        int endBracket = json.lastIndexOf("]"); // Version simplifiée (suppose que data est le dernier ou principal tableau)
-        // Pour être plus robuste sur des JSON complexes imbriqués, il faudrait compter les crochets.
-        // Mais vu vos logs, data est le gros bloc principal.
+        int endBracket = json.lastIndexOf("]");
 
         if (endBracket > startBracket) {
             return json.substring(startBracket + 1, endBracket);

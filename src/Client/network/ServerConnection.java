@@ -36,14 +36,10 @@ public class ServerConnection {
         System.out.println("[NETWORK] Tentative de connexion à " + SERVER_IP + ":" + SERVER_PORT + "...");
 
         try {
-            // 1. Créer un socket vide (ne bloque pas)
             socket = new Socket();
 
-            // 2. Se connecter avec un TIMEOUT de 2000ms (2 secondes)
-            // Si le serveur est éteint, cela échoue au bout de 2s au lieu de figer 1 minute.
             socket.connect(new InetSocketAddress(SERVER_IP, SERVER_PORT), 2000);
 
-            // 3. Si on arrive ici, c'est réussi : on ouvre les flux
             input = new BufferedReader(new InputStreamReader(socket.getInputStream()));
             output = new PrintWriter(socket.getOutputStream(), true);
             connected = true;
@@ -119,11 +115,11 @@ public class ServerConnection {
     }
 
     public void sendFightRequest(int m, int tp, int tc) {
-        sendJson(jsonBuilder.jsonFightRequest(currentPlayerId, m, String.valueOf(tp), tc));
+        sendJson(jsonBuilder.jsonFightRequest(currentPlayerId, m, tp, tc));
     }
 
-    public void sendFightResponse(boolean accepted) {
-
+    public void sendFightResponse(boolean accepted, int requesterId, int myCardId, int enemyCardId) {
+        //sendJson(jsonBuilder.jsonFightResponse(currentPlayerId, accepted, requesterId, myCardId, enemyCardId));
     }
 
     private void sendJson(String json) {
