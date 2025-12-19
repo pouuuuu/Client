@@ -133,7 +133,7 @@ public class CardView extends VBox {
 
         BorderPane mainDialogLayout = new BorderPane();
         mainDialogLayout.setPadding(new Insets(20));
-        mainDialogLayout.setPrefSize(400, 300);
+        mainDialogLayout.setPrefSize(1000, 1000);
 
         mainDialogLayout.setStyle(
                 getDefaultStyle() +
@@ -202,7 +202,7 @@ public class CardView extends VBox {
 
         BorderPane mainDialogLayout = new BorderPane();
         mainDialogLayout.setPadding(new Insets(20));
-        mainDialogLayout.setPrefSize(450, 600);
+        mainDialogLayout.setPrefSize(1000, 1000);
 
         mainDialogLayout.setStyle(
                 getDefaultStyle() +

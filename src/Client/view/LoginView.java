@@ -62,9 +62,27 @@ public class LoginView {
         errorLabel.setTextFill(Color.RED);
 
         btnConnect.setOnAction(e -> {
+            String pseudo = nameField.getText().trim();
+
+            //no name with size over 50 char
+            if (pseudo.length() > 50) {
+                errorLabel.setText("Erreur : Le pseudo ne doit pas dépasser 50 caractères.");
+                errorLabel.setTextFill(Color.RED);
+                return;
+            }
+
+            //only letters, spaces and _ in name
+            if (!pseudo.matches("[a-zA-Z_ ]+")) {
+                errorLabel.setText("Erreur : Caractères invalides (Lettres, espaces et _ uniquement).");
+                errorLabel.setTextFill(Color.RED);
+                return;
+            }
+
+            // Si tout est bon, on lance la connexion
             errorLabel.setText("Connexion...");
             errorLabel.setTextFill(Color.BLUE);
-            boolean success = controller.connect(nameField.getText());
+            boolean success = controller.connect(pseudo);
+
             if (!success) {
                 errorLabel.setText("Connexion échouée (Serveur indisponible)");
                 errorLabel.setTextFill(Color.RED);

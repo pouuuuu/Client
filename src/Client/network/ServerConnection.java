@@ -114,8 +114,8 @@ public class ServerConnection {
         sendJson(json);
     }
 
-    public void sendFightRequest(int m, int tp, int tc) {
-        sendJson(jsonBuilder.jsonFightRequest(currentPlayerId, m, tp, tc));
+    public void sendFightRequest(int myCard, int opponentId, int opponentCardId) {
+        sendJson(jsonBuilder.jsonFightRequest(currentPlayerId, myCard, opponentId, opponentCardId));
     }
 
     public void sendFightResponse(boolean accepted, int requesterId, int myCardId, int enemyCardId) {

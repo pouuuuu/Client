@@ -18,9 +18,9 @@ public class jsonBuilder {
             return "{\"cmd\":\"TRADE_REQUEST\",\"id\":" + playerId + ",\"data\":{\"cardId\":" + cardId + ",\"traderId\":\"" + traderId + "\",\"traderCardId\":" + traderCardId + "}}";
     }
 
-    // Demande de combat
+
     public String jsonFightRequest(int playerId, int cardId, int opponentId, int opponentCardId) {
-        return "{\"cmd\":\"FIGHT_REQUEST\",\"id\":" + playerId + ",\"data\":{\"cardId\":" + cardId + ",\"opponentId\":\"" + opponentId + "\",\"opponentCardId\":" + opponentCardId + "}}";
+        return "{\"cmd\":\"FIGHT_REQUEST\",\"id\":" + playerId + ",\"data\":{\"cardId\":" + cardId + ",\"opponentId\":" + opponentId + ",\"opponentCardId\":" + opponentCardId + "}}";
     }
 
     public String jsonTradeAccept(int playerId, int traderId, int cardId, int traderCardId) {
