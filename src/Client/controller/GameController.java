@@ -327,8 +327,8 @@ public class GameController {
     public void sendTradeCard(int m, int tp, int tc) {
         if(checkConn()) serverConnection.sendTradeRequest(m, tp, tc);
     }
-    public void sendFightCard(int m, int tp, int tc) {
-        if(checkConn()) serverConnection.sendFightRequest(m, tp, tc);
+    public void sendFightCard(int myCard, int opponentId, int opponentCardId) {
+        if(checkConn()) serverConnection.sendFightRequest(myCard, opponentId, opponentCardId);
     }
 
     private boolean checkConn() {

@@ -322,12 +322,34 @@ public class GameBoardView implements GameObserver {
         btnOk.setStyle("-fx-background-color: #4CAF50; -fx-text-fill: white;");
         btnOk.setOnAction(e -> {
             try {
-                String nom = tfName.getText();
+                String nom = tfName.getText().trim();
+
+                if (nom.isEmpty()) {
+                    showAlert("Erreur", "Le nom de la carte ne peut pas être vide.");
+                    return;
+                }
+                if (nom.length() > 50) {
+                    showAlert("Erreur", "Le nom est trop long (Max 50 caractères).");
+                    return;
+                }
+                if (!nom.matches("[a-zA-Z_ ]+")) {
+                    showAlert("Erreur", "Le nom contient des caractères interdits.\nAutorisé : Lettres, espaces, underscore (_).");
+                    return;
+                }
+
                 int hp = Integer.parseInt(tfHP.getText());
                 int ap = Integer.parseInt(tfAP.getText());
                 int dp = Integer.parseInt(tfDP.getText());
+
+                if ( hp > 100 || ap > 100 || dp > 100) {
+                    showAlert("Erreur", "Les statistiques des cartes ne peuvent pas dépasser 100.");
+                }
+
                 controller.sendCreateCard(nom, ap, dp, hp);
                 dialog.close();
+
+            } catch (NumberFormatException ex) {
+                showAlert("Erreur", "Les statistiques (HP, ATK, DEF) doivent être des nombres entiers.");
             } catch (Exception ex) {
                 System.err.println("Error: " + ex.getMessage());
             }
@@ -412,6 +434,14 @@ public class GameBoardView implements GameObserver {
         dialog.show();
     }
 
+    private void showAlert(String title, String message) {
+        Alert alert = new Alert(Alert.AlertType.ERROR);
+        alert.setTitle(title);
+        alert.setHeaderText(null);
+        alert.setContentText(message);
+        alert.showAndWait();
+    }
+
     public void showInfoPopup(String msg, String colorHex) {
         Platform.runLater(() -> {
             Label lbl = new Label(msg);
@@ -428,19 +458,12 @@ public class GameBoardView implements GameObserver {
 
     public void showTradePopup(String message, Runnable onAccept, Runnable onDeny) {
         Platform.runLater(() -> {
-            System.out.println("[VIEW] Display trade popup");
-            if (notificationBox == null) {
-                System.err.println("[VIEW] ERREOR: notificationBox is null");
-                return;
-            }
+            if (notificationBox == null) return;
 
-            // Création du panneau visuel
             VBox panel = new VBox(15);
             panel.setAlignment(Pos.CENTER);
             panel.setPadding(new Insets(15));
             panel.setMaxWidth(300);
-
-            // Style : Fond blanc, Bordure orange, Ombre
             panel.setStyle(
                     "-fx-background-color: white;" +
                             "-fx-border-color: #FF9800; -fx-border-width: 3;" +
@@ -448,7 +471,6 @@ public class GameBoardView implements GameObserver {
                             "-fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.4), 10, 0, 0, 0);"
             );
 
-            // Le Message
             Label lblMsg = new Label(message);
             lblMsg.setWrapText(true);
             lblMsg.setStyle("-fx-font-size: 14px; -fx-font-weight: bold; -fx-text-alignment: center;");
@@ -457,7 +479,7 @@ public class GameBoardView implements GameObserver {
             btnYes.setStyle("-fx-background-color: #4CAF50; -fx-text-fill: white; -fx-font-weight: bold; -fx-cursor: hand;");
 
             btnYes.setOnAction(e -> {
-
+                notificationBox.getChildren().remove(panel); // Ferme ce popup
                 onAccept.run();
             });
 
@@ -465,7 +487,7 @@ public class GameBoardView implements GameObserver {
             btnNo.setStyle("-fx-background-color: #F44336; -fx-text-fill: white; -fx-font-weight: bold; -fx-cursor: hand;");
 
             btnNo.setOnAction(e -> {
-
+                notificationBox.getChildren().remove(panel); // Ferme ce popup
                 onDeny.run();
             });
 
@@ -473,12 +495,10 @@ public class GameBoardView implements GameObserver {
             buttons.setAlignment(Pos.CENTER);
 
             panel.getChildren().addAll(lblMsg, buttons);
-            notificationBox.getChildren().add(panel);
+
+            notificationBox.getChildren().add(0, panel);
         });
     }
-
-    // Dans GameBoardView.java
-
     public void showFightPopup(String message, Runnable onAccept, Runnable onDeny) {
         Platform.runLater(() -> {
             if (notificationBox == null) return;
@@ -489,31 +509,30 @@ public class GameBoardView implements GameObserver {
             panel.setMaxWidth(320);
 
             panel.setStyle(
-                    "-fx-background-color: #2c0b0e;" + // Fond sombre rougeatre
-                            "-fx-border-color: #FF0000; -fx-border-width: 3;" + // Bordure Rouge vif
+                    "-fx-background-color: #2c0b0e;" +
+                            "-fx-border-color: #FF0000; -fx-border-width: 2;" +
                             "-fx-background-radius: 10; -fx-border-radius: 10;" +
-                            "-fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.6), 15, 0, 0, 0);"
+                            "-fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.6), 10, 0, 0, 0);"
             );
 
-            // Le Message
             Label lblMsg = new Label(message);
             lblMsg.setWrapText(true);
-            // Texte blanc et gras
-            lblMsg.setStyle("-fx-font-size: 14px; -fx-font-weight: bold; -fx-text-alignment: center; -fx-text-fill: white;");
+            lblMsg.setStyle("-fx-font-size: 14px; -fx-font-weight: bold; -fx-text-fill: white;");
 
-            // Bouton COMBATTRE
-            Button btnFight = new Button("⚔️ SE BATTRE");
-            btnFight.setStyle("-fx-background-color: #d32f2f; -fx-text-fill: white; -fx-font-weight: bold; -fx-cursor: hand; -fx-font-size: 13px;");
+            Button btnFight = new Button("SE BATTRE");
+            btnFight.setStyle("-fx-background-color: #d32f2f; -fx-text-fill: white; -fx-font-weight: bold; -fx-cursor: hand; -fx-background-radius: 5;");
+
             btnFight.setOnAction(e -> {
-                notificationBox.getChildren().remove(panel); // On enlève juste ce popup
+                notificationBox.getChildren().remove(panel);
                 onAccept.run();
             });
 
-            // Bouton FUIR
+            // --- BOUTON FUIR ---
             Button btnFlee = new Button("FUIR");
-            btnFlee.setStyle("-fx-background-color: #757575; -fx-text-fill: white; -fx-font-weight: bold; -fx-cursor: hand;");
+            btnFlee.setStyle("-fx-background-color: #757575; -fx-text-fill: white; -fx-font-weight: bold; -fx-cursor: hand; -fx-background-radius: 5;");
+
             btnFlee.setOnAction(e -> {
-                notificationBox.getChildren().remove(panel); // On enlève juste ce popup
+                notificationBox.getChildren().remove(panel);
                 onDeny.run();
             });
 
@@ -522,7 +541,6 @@ public class GameBoardView implements GameObserver {
 
             panel.getChildren().addAll(lblMsg, buttons);
 
-            // Ajout en haut de la pile
             notificationBox.getChildren().add(0, panel);
         });
     }
@@ -530,64 +548,66 @@ public class GameBoardView implements GameObserver {
     public void showSuccessPopup(String message) {
         Platform.runLater(() -> {
             if (notificationBox == null) return;
-            notificationBox.getChildren().clear();
 
-            // Création du panneau (Style Succès/Vert)
+
             VBox panel = new VBox(15);
             panel.setAlignment(Pos.CENTER);
             panel.setPadding(new Insets(15));
             panel.setMaxWidth(300);
             panel.setStyle(
                     "-fx-background-color: white;" +
-                            "-fx-border-color: #4CAF50; -fx-border-width: 3;" + // Bordure VERTE
+                            "-fx-border-color: #4CAF50; -fx-border-width: 3;" +
                             "-fx-background-radius: 10; -fx-border-radius: 10;" +
                             "-fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.4), 10, 0, 0, 0);"
             );
 
-            // Le Message
             Label lblMsg = new Label(message);
             lblMsg.setWrapText(true);
             lblMsg.setStyle("-fx-font-size: 14px; -fx-font-weight: bold; -fx-text-alignment: center; -fx-text-fill: #2E7D32;");
 
-            // Bouton OK pour fermer
             Button btnOk = new Button("OK");
             btnOk.setStyle("-fx-background-color: #4CAF50; -fx-text-fill: white; -fx-font-weight: bold; -fx-cursor: hand;");
-            btnOk.setOnAction(e -> clearNotification());
+
+            btnOk.setOnAction(e -> {
+                notificationBox.getChildren().remove(panel);
+            });
 
             panel.getChildren().addAll(lblMsg, btnOk);
-            notificationBox.getChildren().add(panel);
+
+            notificationBox.getChildren().add(0, panel);
         });
     }
 
     public void showErrorPopup(String message) {
         Platform.runLater(() -> {
             if (notificationBox == null) return;
-            notificationBox.getChildren().clear();
 
-            // Création du panneau (Style Erreur/Rouge)
+
             VBox panel = new VBox(15);
             panel.setAlignment(Pos.CENTER);
             panel.setPadding(new Insets(15));
             panel.setMaxWidth(300);
             panel.setStyle(
                     "-fx-background-color: white;" +
-                            "-fx-border-color: #F44336; -fx-border-width: 3;" + // Bordure ROUGE
+                            "-fx-border-color: #F44336; -fx-border-width: 3;" +
                             "-fx-background-radius: 10; -fx-border-radius: 10;" +
                             "-fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.4), 10, 0, 0, 0);"
             );
 
-            // Le Message
             Label lblMsg = new Label(message);
             lblMsg.setWrapText(true);
             lblMsg.setStyle("-fx-font-size: 14px; -fx-font-weight: bold; -fx-text-alignment: center; -fx-text-fill: #D32F2F;");
 
-            // Bouton OK pour fermer
             Button btnOk = new Button("OK");
             btnOk.setStyle("-fx-background-color: #F44336; -fx-text-fill: white; -fx-font-weight: bold; -fx-cursor: hand;");
-            btnOk.setOnAction(e -> clearNotification());
+
+            btnOk.setOnAction(e -> {
+                notificationBox.getChildren().remove(panel);
+            });
 
             panel.getChildren().addAll(lblMsg, btnOk);
-            notificationBox.getChildren().add(panel);
+
+            notificationBox.getChildren().add(0, panel);
         });
     }
 
