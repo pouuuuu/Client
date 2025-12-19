@@ -89,10 +89,6 @@ public class jsonReader {
     }
 
 
-    // =================================================================
-    // --- GESTION DU TRADE (Via extractValue direct) ---
-    // =================================================================
-
     // ID du joueur qui propose l'échange
     public int getTradeSenderId(String json) {
         // DOIT être "fromPlayerId" pour correspondre au paquet du serveur
@@ -123,6 +119,33 @@ public class jsonReader {
         Pattern p = Pattern.compile("\"" + key + "\"\\s*:\\s*\"?([^,\"}]+)\"?");
         Matcher m = p.matcher(json);
         return m.find() ? m.group(1) : "";
+    }
+
+    public int getTradePlayerId1(String json) {
+        // ID de celui qui a accepté (ou le premier ID du paquet)
+        String val = extractValue(json, "playerId");
+        return val.isEmpty() ? -1 : Integer.parseInt(val);
+    }
+
+    public int getTradePlayerId2(String json) {
+        // ID de celui qui a proposé (traderId)
+        String val = extractValue(json, "traderId");
+        return val.isEmpty() ? -1 : Integer.parseInt(val);
+    }
+
+    public int getTradeCardId1(String json) {
+        String val = extractValue(json, "cardId");
+        if (val.isEmpty()) {
+            val = extractValue(json, "yourCardId");
+        }
+
+        return val.isEmpty() ? -1 : Integer.parseInt(val);
+    }
+
+    public int getTradeCardId2(String json) {
+        // Carte appartenant à PlayerId2 (traderCardId)
+        String val = extractValue(json, "traderCardId");
+        return val.isEmpty() ? -1 : Integer.parseInt(val);
     }
 
     // split obj1},{obj2

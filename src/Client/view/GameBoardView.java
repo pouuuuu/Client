@@ -216,34 +216,26 @@ public class GameBoardView implements GameObserver {
     // Dans src/view/GameBoardView.java
 
     public void refresh() {
-        // --- CORRECTIF : Vérification de sécurité ---
-        // Si l'interface n'est pas encore initialisée (getView() n'a pas encore été appelé),
-        // on arrête ici pour éviter le NullPointerException.
         if (myHandContainer == null || opponentHandContainer == null) {
             return;
         }
 
-        // --- Le reste de votre code refresh() reste identique ---
-
-        // 1. Rafraichir MA MAIN
         myHandContainer.getChildren().clear();
         PlayerViewModel me = controller.getCurrentPlayerViewModel();
 
         if (me != null && me.getCards() != null) {
             int col = 0, row = 0;
             for (CardViewModel c : me.getCards()) {
-                // Vérifie si cette carte est celle sélectionnée
                 boolean isSelected = (selectedMyCard != null && selectedMyCard.getId() == c.getId());
+                if (isSelected) selectedMyCard = c;
 
-                // Création de la Vue avec le Callback
-                // NOTE : Assurez-vous d'avoir bien le constructeur compatible dans CardView ou d'utiliser celui à 4 paramètres
                 CardView cv = new CardView(c, 1.2, isSelected, () -> {
                     if (isSelected) {
                         this.selectedMyCard = null;
                     } else {
                         this.selectedMyCard = c;
                     }
-                    updateSelectionUI();
+                    refresh();
                 });
 
                 myHandContainer.add(cv, col, row);
@@ -252,11 +244,18 @@ public class GameBoardView implements GameObserver {
             }
         }
 
-        // 2. Rafraichir LISTE JOUEURS (Centre)
         VBox playersList = (VBox) centerContainer.lookup("#playersList");
         if (playersList != null) {
             playersList.getChildren().clear();
-            for (PlayerViewModel p : controller.getOtherPlayersViewModels()) {
+
+            java.util.ArrayList<PlayerViewModel> freshPlayers = controller.getOtherPlayersViewModels();
+            PlayerViewModel refreshedOpponent = null;
+
+            for (PlayerViewModel p : freshPlayers) {
+                if (selectedOpponent != null && p.getId() == selectedOpponent.getId()) {
+                    refreshedOpponent = p;
+                }
+
                 Button pBtn = new Button(p.getName() + " (" + p.getCardCount() + ")");
                 pBtn.setMaxWidth(Double.MAX_VALUE);
 
@@ -269,18 +268,23 @@ public class GameBoardView implements GameObserver {
                 pBtn.setOnAction(e -> {
                     this.selectedOpponent = p;
                     this.selectedOpponentCard = null;
-                    updateSelectionUI();
+                    refresh(); // Appel direct
                 });
                 playersList.getChildren().add(pBtn);
             }
+
+            if (selectedOpponent != null) {
+                selectedOpponent = refreshedOpponent;
+                if (selectedOpponent == null) selectedOpponentCard = null;
+            }
         }
 
-        // 3. Rafraichir MAIN ADVERSAIRE (Droite)
         opponentHandContainer.getChildren().clear();
         if (selectedOpponent != null) {
             int col = 0, row = 0;
             for (CardViewModel c : selectedOpponent.getCards()) {
                 boolean isSelected = (selectedOpponentCard != null && selectedOpponentCard.getId() == c.getId());
+                if (isSelected) selectedOpponentCard = c;
 
                 CardView cv = new CardView(c, 1.2, isSelected, () -> {
                     if (isSelected) {
@@ -288,7 +292,7 @@ public class GameBoardView implements GameObserver {
                     } else {
                         this.selectedOpponentCard = c;
                     }
-                    updateSelectionUI();
+                    refresh(); // Appel direct
                 });
 
                 opponentHandContainer.add(cv, col, row);
@@ -296,9 +300,10 @@ public class GameBoardView implements GameObserver {
                 if (col > 2) { col = 0; row++; }
             }
         }
+        updateControlBar();
     }
 
-    private void updateSelectionUI() {
+    private void updateControlBar() {
         // Mettre à jour les textes
         lblMySelection.setText("Moi: " + (selectedMyCard != null ? selectedMyCard.getName() : "Aucune"));
         lblOppSelection.setText("Adv: " + (selectedOpponent != null ? selectedOpponent.getName() : "Aucun"));
@@ -309,8 +314,6 @@ public class GameBoardView implements GameObserver {
         btnCombat.setDisable(!ready);
         btnTrade.setDisable(!ready);
 
-        // Rafraichir les bordures des cartes
-        refresh();
     }
 
     // =========================================================================
@@ -343,7 +346,7 @@ public class GameBoardView implements GameObserver {
                 controller.sendCreateCard(nom, ap, dp, hp);
                 dialog.close();
             } catch (Exception ex) {
-                System.err.println("Erreur saisie: " + ex.getMessage());
+                System.err.println("Error: " + ex.getMessage());
             }
         });
 
@@ -399,7 +402,7 @@ public class GameBoardView implements GameObserver {
         box.setAlignment(Pos.CENTER);
         box.setStyle("-fx-background-color: #FFF8E1;");
 
-        Label title = new Label("🔄 ÉCHANGE 🔄");
+        Label title = new Label("ÉCHANGE");
         title.setStyle("-fx-font-size: 20px; -fx-text-fill: #F57F17; -fx-font-weight: bold;");
 
         Label desc = new Label("Proposer un échange à " + selectedOpponent.getName() + " ?\n" +
@@ -428,9 +431,9 @@ public class GameBoardView implements GameObserver {
 
     public void showTradePopup(String message, Runnable onAccept, Runnable onDeny) {
         Platform.runLater(() -> {
-            System.out.println("[VIEW] Affichage Popup Trade");
+            System.out.println("[VIEW] Display trade popup");
             if (notificationBox == null) {
-                System.err.println("[VIEW] ERREUR: notificationBox est null !");
+                System.err.println("[VIEW] ERREOR: notificationBox is null");
                 return;
             }
             notificationBox.getChildren().clear();

@@ -20,16 +20,26 @@ public class GameController {
     private ArrayList<GameObserver> observers;
     private jsonReader jsonReader;
     private String pendingPlayerName;
+    private boolean isBot = false;
 
     public GameController(Stage stage) {
-        System.out.println("[CTRL] Starting...");
+        this(stage, false);
+    }
+
+    public GameController(Stage stage, boolean isBot) {
+        this.isBot = isBot;
+        System.out.println("[CTRL] Starting " + (isBot ? "BOT MODE" : "CLIENT MODE") + "...");
+
         this.gameState = new GameState();
         this.observers = new ArrayList<>();
-        this.jsonReader = new jsonReader(); // Instantiation
+        this.jsonReader = new jsonReader();
 
-        this.viewManager = new ViewManager(stage, this);
-        this.viewManager.showLoginView();
-        stage.setMaximized(true);
+        // Si c'est un bot, on ne lance pas l'interface graphique (ViewManager)
+        if (!isBot && stage != null) {
+            this.viewManager = new ViewManager(stage, this);
+            this.viewManager.showLoginView();
+            stage.setMaximized(true);
+        }
     }
 
     // --- 1. CONNECTION ---
@@ -53,7 +63,10 @@ public class GameController {
         switch (cmd) {
             case "AUTH_OK":
                 int id = jsonReader.getAuthId(json);
-                connection(id);
+                handleConnection(id);
+                if (isBot) {
+                    generateStarterDeck();
+                }
                 break;
 
             case "CONNECTED_PLAYERS": {
@@ -74,7 +87,7 @@ public class GameController {
             case "CREATE_CARD_OK": {
                 Card c = jsonReader.parseCard(json);
                 if (c != null) {
-                    createCard(c);
+                    handleCreateCard(c);
                 }
                 break;
             }
@@ -90,22 +103,37 @@ public class GameController {
             }
 
             case "TRADE_DENIED" : {
-                handleTradeRefused(json);
+                handleTradeDenied(json);
+                break;
+            }
+
+            case "TRADE_RESPONSE_SENT": {
+                break;
+            }
+
+            case "TRADE_COMPLETE": {
                 break;
             }
 
             case "FIGHT_REQUEST": {
-
+                //handleFightRequest(json);
+                break;
             }
 
             case "FIGHT_ACCEPTED": {
-
+                //handleFight(json);
+                break;
             }
 
             case "FIGHT_DENIED": {
-
+                //handleFightDenied(json);
+                break;
             }
 
+            case "FIGHT_RESULT": {
+                //handleFightResult(json);
+                break;
+            }
 
             case "ERROR":
                 String err = jsonReader.getErrorMessage(json);
@@ -119,7 +147,7 @@ public class GameController {
 
     // --- 3. ACTION HANDLERS ---
 
-    private void connection(int playerId) {
+    private void handleConnection(int playerId) {
         javafx.application.Platform.runLater(() -> {
             System.out.println("[CTRL] Auth success. My ID: " + playerId);
 
@@ -131,12 +159,15 @@ public class GameController {
             me.setConnected(true);
             gameState.setCurrentPlayer(me);
 
-            viewManager.setConnected(true);
+            if (viewManager != null) {
+                viewManager.setConnected(true);
+            }
+
             notifyObservers();
         });
     }
 
-    private void createCard(Card card) {
+    private void handleCreateCard(Card card) {
         System.out.println("[CTRL] Card created: " + card.getName());
         if (gameState.getCurrentPlayer() != null) {
             gameState.getCurrentPlayer().getHand().addCard(card);
@@ -154,10 +185,15 @@ public class GameController {
             int myCardId = jsonReader.getTradeRequestedCardId(json);
             int traderCardId = jsonReader.getTradeOfferedCardId(json);
 
+            if (isBot) {
+                System.out.println("[BOT] Auto-accepting trade from ID " + traderId);
+                serverConnection.sendTradeResponse(true, traderId, myCardId, traderCardId);
+            }
+
             // 2. Construction du message
             String msg = "ECHANGE PROPOSÉ par " + traderName + "\n" +
                     "Il te donne" + gameState.getPlayerById(traderId).getHand().getCardById(traderCardId).getName() + " (#" + traderCardId + ")\n" +
-                    "Contre" + gameState.getCurrentPlayer().getHand().getCardById(myCardId).getName() + " (#" + myCardId + ")";
+                    "Contre " + gameState.getCurrentPlayer().getHand().getCardById(myCardId).getName() + " (#" + myCardId + ")";
 
             // 3. Appel UI
             if (viewManager.getGameBoardView() != null) {
@@ -168,39 +204,64 @@ public class GameController {
                 );
             }
         } catch (Exception e) {
-            // C'est ici qu'on attrape l'erreur qui tuait le thread !
-            System.err.println("[ERREUR TRADE] Impossible de traiter la demande : " + e.getMessage());
-            e.printStackTrace();
+
         }
     }
 
     private void handleTrade(String json) {
-        int traderId = jsonReader.getTradeSenderId(json);
-        String traderName = jsonReader.getTradeSenderName(json);
-        int myCardId = jsonReader.getTradeRequestedCardId(json);
-        int hisCardId = jsonReader.getTradeOfferedCardId(json);
+        int id1 = jsonReader.getTradePlayerId1(json);
+        int id2 = jsonReader.getTradePlayerId2(json);
 
-        Player me = gameState.getCurrentPlayer();
-        Player trader = gameState.getPlayerById(traderId);
-        Card myCard = me.getHand().getCardById(myCardId);
-        Card hisCard = trader.getHand().getCardById(hisCardId);
+        int cardId1 = jsonReader.getTradeCardId1(json);
+        int cardId2 = jsonReader.getTradeCardId2(json);
 
-        //remove cards
-        Card myCardCpy = new Card(myCard.getId(), myCard.getName(), myCard.getAttack(), myCard.getDefense(), myCard.getHealth(), myCard.getOwnerId());
-        me.getHand().removeCard(myCard);
-        Card hisCardCpy = new Card(hisCard.getId(), hisCard.getName(), hisCard.getAttack(), hisCard.getDefense(), hisCard.getHealth(), hisCard.getOwnerId());
-        trader.getHand().removeCard(hisCard);
+        System.out.println("[CTRL] Trade between:" + id1 + " et ID:" + id2 +" done");
 
-        //add cards
-        me.getHand().addCard(hisCardCpy);
-        trader.getHand().addCard(myCardCpy);
+        Player p1 = resolvePlayer(id1);
+        Player p2 = resolvePlayer(id2);
 
-        if (viewManager.getGameBoardView() != null) {
-            viewManager.getGameBoardView().showSuccessPopup("Échange effectué avec " + traderName + " !");
+        if (p1 == null || p2 == null) {
+            System.err.println("[TRADE ERROR] Impossible de trouver les joueurs (ID " + id1 + " ou " + id2 + ")");
+            return;
+        }
+
+        Card c1 = p1.getHand().getCardById(cardId1);
+        Card c2 = p2.getHand().getCardById(cardId2);
+
+        if (c1 == null || c2 == null) {
+            System.err.println("[TRADE ERROR] Can't find cards for trade");
+            return;
+        }
+
+        p1.getHand().removeCard(c1);
+        p2.getHand().removeCard(c2);
+        c1.setOwnerId(p2.getId());
+        c2.setOwnerId(p1.getId());
+        p1.getHand().addCard(c2);
+        p2.getHand().addCard(c1);
+
+        System.out.println("[TRADE] Swap : " + c1.getName() + " <-> " + c2.getName());
+
+        notifyObservers();
+
+        // 6. Affichage Popup (Seulement si je suis concerné)
+        int myId = gameState.getCurrentPlayer().getId();
+        if (myId == id1 || myId == id2) {
+            String otherName = (myId == id1) ? p2.getName() : p1.getName();
+            if (viewManager.getGameBoardView() != null) {
+                viewManager.getGameBoardView().showSuccessPopup("Échange effectué avec " + otherName + " !");
+            }
         }
     }
 
-    private void handleTradeRefused(String json) {
+    private Player resolvePlayer(int id) {
+        if (gameState.getCurrentPlayer() != null && gameState.getCurrentPlayer().getId() == id) {
+            return gameState.getCurrentPlayer();
+        }
+        return gameState.getPlayerById(id);
+    }
+
+    private void handleTradeDenied(String json) {
         String refuaserName = jsonReader.getTradeSenderName(json);
         if(refuaserName == null || refuaserName.isEmpty()) refuaserName = "L'adversaire";
         String finalName = refuaserName;
@@ -208,6 +269,16 @@ public class GameController {
             viewManager.getGameBoardView().showErrorPopup(finalName + " a refusé votre échange.");
         }
     }
+
+    private void handleFightRequest(String json) {
+
+        if (isBot) {
+            System.out.println("[BOT] Auto-accepting fight request.");
+            serverConnection.sendFightResponse(true);
+            return;
+        }
+    }
+
 
     // --- 4. SEND TO SERVER ---
 
@@ -218,7 +289,7 @@ public class GameController {
         if(checkConn()) serverConnection.sendTradeRequest(m, tp, tc);
     }
     public void sendFightCard(int m, int tp, int tc) {
-        if(checkConn()) serverConnection.sendCombatRequest(m, tp, tc);
+        if(checkConn()) serverConnection.sendFightRequest(m, tp, tc);
     }
 
     private boolean checkConn() {
@@ -322,6 +393,16 @@ public class GameController {
             }
         }
         notifyObservers();
+    }
+
+    private void generateStarterDeck() {
+        System.out.println("[BOT] Génération du deck de base...");
+        // Crée 4 cartes automatiquement avec des stats aléatoires ou fixes
+        // (Nom, Atk, Def, HP)
+        sendCreateCard("carteBot1", 40, 40, 100);
+        sendCreateCard("carteBot2", 10, 80, 150);
+        sendCreateCard("carteBot3", 80, 10, 60);
+        sendCreateCard("carteBot4", 20, 20, 80);
     }
 
     // Debug

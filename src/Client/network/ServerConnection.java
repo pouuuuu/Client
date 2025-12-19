@@ -118,16 +118,27 @@ public class ServerConnection {
         sendJson(json);
     }
 
-    public void sendCombatRequest(int m, int tp, int tc) {
+    public void sendFightRequest(int m, int tp, int tc) {
         sendJson(jsonBuilder.jsonFightRequest(currentPlayerId, m, String.valueOf(tp), tc));
+    }
+
+    public void sendFightResponse(boolean accepted) {
+
     }
 
     private void sendJson(String json) {
         if (output != null) {
-            // --- LOG: PACKET SENT ---
             System.out.println("[PACKET OUT] " + json);
 
             output.println(json);
+
+            // AJOUT : Vérifier si l'envoi a réellement fonctionné
+            if (output.checkError()) {
+                System.err.println("[NETWORK CRITICAL] Erreur d'envoi : Le flux est cassé ou le serveur est déconnecté.");
+                controller.onError("Erreur réseau : Message non envoyé.");
+            }
+        } else {
+            System.err.println("[NETWORK] Tentative d'envoi sans connexion (output is null)");
         }
     }
 
