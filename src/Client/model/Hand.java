@@ -25,6 +25,7 @@ public class Hand {
     public void addCard(Card card) {
         for (Card existingCard : this.cards) {
             if (existingCard.getId() == card.getId()) {
+                System.out.println("[MODEL] The card " + card.getName() + " is already created");
                 return;
             }
         }
@@ -36,7 +37,7 @@ public class Hand {
         this.cards.remove(card);
     }
 
-    public Card getSpecificCardById(int id) {
+    public Card getCardById(int id) {
         for (Card card : this.cards) {
             if(card.getId() == id) {
                 return card;

@@ -84,6 +84,11 @@ public class GameController {
                 break;
             }
 
+            case "TRADE_ACCEPTED": {
+                handleTrade(json);
+                break;
+            }
+
             case "FIGHT_REQUESTED":
 
 
@@ -126,25 +131,25 @@ public class GameController {
 
     private void handleTradeRequest(String json) {
         try {
-            System.out.println("[CTRL] Traitement Trade Request..."); // Log de debug
+            System.out.println("[CTRL] Trade Request..."); // Log de debug
 
             // 1. Lecture des données
             int traderId = jsonReader.getTradeSenderId(json);
             String traderName = jsonReader.getTradeSenderName(json);
             int myCardId = jsonReader.getTradeRequestedCardId(json);
-            int theirCardId = jsonReader.getTradeOfferedCardId(json);
+            int traderCardId = jsonReader.getTradeOfferedCardId(json);
 
             // 2. Construction du message
             String msg = "ECHANGE PROPOSÉ par " + traderName + "\n" +
-                    "Il te donne la carte #" + theirCardId + "\n" +
-                    "Contre ta carte #" + myCardId;
+                    "Il te donne" + gameState.getPlayerById(traderId).getHand().getCardById(traderCardId).getName() + " (#" + traderCardId + ")\n" +
+                    "Contre" + gameState.getCurrentPlayer().getHand().getCardById(myCardId).getName() + " (#" + myCardId + ")";
 
             // 3. Appel UI
             if (viewManager.getGameBoardView() != null) {
                 viewManager.getGameBoardView().showTradePopup(
                         msg,
-                        () -> serverConnection.sendTradeResponse(true, traderId, myCardId, theirCardId),
-                        () -> serverConnection.sendTradeResponse(false, traderId, myCardId, theirCardId)
+                        () -> serverConnection.sendTradeResponse(true, traderId, myCardId, traderCardId),
+                        () -> serverConnection.sendTradeResponse(false, traderId, myCardId, traderCardId)
                 );
             }
         } catch (Exception e) {
@@ -152,6 +157,28 @@ public class GameController {
             System.err.println("[ERREUR TRADE] Impossible de traiter la demande : " + e.getMessage());
             e.printStackTrace();
         }
+    }
+
+    private void handleTrade(String json) {
+        int traderId = jsonReader.getTradeSenderId(json);
+        String traderName = jsonReader.getTradeSenderName(json);
+        int myCardId = jsonReader.getTradeRequestedCardId(json);
+        int hisCardId = jsonReader.getTradeOfferedCardId(json);
+
+        Player me = gameState.getCurrentPlayer();
+        Player trader = gameState.getPlayerById(traderId);
+        Card myCard = me.getHand().getCardById(myCardId);
+        Card hisCard = trader.getHand().getCardById(hisCardId);
+
+        //remove cards
+        Card myCardCpy = new Card(myCard.getId(), myCard.getName(), myCard.getAttack(), myCard.getDefense(), myCard.getHealth(), myCard.getOwnerId());
+        me.getHand().removeCard(myCard);
+        Card hisCardCpy = new Card(hisCard.getId(), hisCard.getName(), hisCard.getAttack(), hisCard.getDefense(), hisCard.getHealth(), hisCard.getOwnerId());
+        trader.getHand().removeCard(hisCard);
+
+        //add cards
+        me.getHand().addCard(hisCardCpy);
+        trader.getHand().addCard(myCardCpy);
     }
 
     // --- 4. SEND TO SERVER ---

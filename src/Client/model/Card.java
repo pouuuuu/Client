@@ -29,11 +29,7 @@ public class Card {
     public int getAttack() { return attack; }
     public int getDefense() { return defense; }
     public int getHealth() { return health; }
-
-    public int getMaxHealth() {
-        return maxHealth;
-    }
-
+    public int getMaxHealth() { return maxHealth; }
     public int getOwnerId() { return ownerId; }
 
     public void setOwnerId(int ownerId) { this.ownerId = ownerId; }
